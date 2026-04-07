@@ -9,11 +9,11 @@ MANDATORY
     LOCAL_IMAGE_NAME The name of the local image to use for the environment if you are using from_docker_image()
                      method
 
-- Defaults are set only for API_BASE_URL and MODEL_NAME 
+- Defaults are set only for API_BASE_URL and MODEL_NAME
     (and should reflect your active inference setup):
     API_BASE_URL = os.getenv("API_BASE_URL", "<your-active-endpoint>")
     MODEL_NAME = os.getenv("MODEL_NAME", "<your-active-model>")
-    
+
 - The inference script must be named `inference.py` and placed in the root directory of the project
 - Participants must use OpenAI Client for all LLM calls using above variables
 
@@ -50,7 +50,8 @@ from typing import List, Optional
 from openai import OpenAI
 
 from my_env_v4 import MyEnvV4Action, MyEnvV4Env
-IMAGE_NAME = os.getenv("IMAGE_NAME") # If you are using docker image 
+
+IMAGE_NAME = os.getenv("IMAGE_NAME")  # If you are using docker image
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
 API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
@@ -81,7 +82,9 @@ def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 
-def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+def log_step(
+    step: int, action: str, reward: float, done: bool, error: Optional[str]
+) -> None:
     error_val = error if error else "null"
     done_val = str(done).lower()
     print(
@@ -92,10 +95,15 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
+    print(
+        f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
+        flush=True,
+    )
 
 
-def build_user_prompt(step: int, last_echoed: str, last_reward: float, history: List[str]) -> str:
+def build_user_prompt(
+    step: int, last_echoed: str, last_reward: float, history: List[str]
+) -> str:
     history_block = "\n".join(history[-4:]) if history else "None"
     return textwrap.dedent(
         f"""
@@ -109,7 +117,9 @@ def build_user_prompt(step: int, last_echoed: str, last_reward: float, history: 
     ).strip()
 
 
-def get_model_message(client: OpenAI, step: int, last_echoed: str, last_reward: float, history: List[str]) -> str:
+def get_model_message(
+    client: OpenAI, step: int, last_echoed: str, last_reward: float, history: List[str]
+) -> str:
     user_prompt = build_user_prompt(step, last_echoed, last_reward, history)
     try:
         completion = client.chat.completions.create(
@@ -143,7 +153,7 @@ async def main() -> None:
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        result = await env.reset() # OpenENV.reset()
+        result = await env.reset()  # OpenENV.reset()
         last_echoed = result.observation.echoed_message
         last_reward = 0.0
 

@@ -21,7 +21,11 @@ MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
 ENV_BASE_URL = os.getenv("ENV_BASE_URL")
-LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME") or os.getenv("IMAGE_NAME") or "support_ops_env-env:latest"
+LOCAL_IMAGE_NAME = (
+    os.getenv("LOCAL_IMAGE_NAME")
+    or os.getenv("IMAGE_NAME")
+    or "support_ops_env-env:latest"
+)
 
 BENCHMARK = os.getenv("BENCHMARK", "support_ops_env")
 SUCCESS_SCORE_THRESHOLD = float(os.getenv("SUCCESS_SCORE_THRESHOLD", "0.75"))
@@ -112,7 +116,9 @@ def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 
-def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+def log_step(
+    step: int, action: str, reward: float, done: bool, error: Optional[str]
+) -> None:
     done_val = str(done).lower()
     err = error if error else "null"
     print(
@@ -173,7 +179,9 @@ def _heuristic_action(observation) -> SupportOpsAction:
             return SupportOpsAction(
                 command="reply",
                 ticket_id=ticket.ticket_id,
-                message=REPLY_TEMPLATES.get(ticket.ticket_id, "Acknowledged. Working on this now."),
+                message=REPLY_TEMPLATES.get(
+                    ticket.ticket_id, "Acknowledged. Working on this now."
+                ),
             )
 
         if ticket.status != target["status"]:
@@ -232,7 +240,9 @@ def _model_action(client: OpenAI, observation) -> SupportOpsAction:
         return _heuristic_action(observation)
 
 
-async def run_task(env: SupportOpsEnv, task_name: str, client: Optional[OpenAI]) -> float:
+async def run_task(
+    env: SupportOpsEnv, task_name: str, client: Optional[OpenAI]
+) -> float:
     rewards: List[float] = []
     steps_taken = 0
     score = 0.0

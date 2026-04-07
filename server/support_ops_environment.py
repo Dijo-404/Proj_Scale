@@ -113,7 +113,9 @@ class SupportOpsEnvironment(Environment):
             invalid_penalty=0.0,
         )
 
-    def step(self, action: SupportOpsAction, timeout_s: Optional[float] = None, **kwargs) -> SupportOpsObservation:  # type: ignore[override]
+    def step(
+        self, action: SupportOpsAction, timeout_s: Optional[float] = None, **kwargs
+    ) -> SupportOpsObservation:  # type: ignore[override]
         if self._done:
             return self._build_observation(
                 reward=-0.1,
@@ -134,7 +136,9 @@ class SupportOpsEnvironment(Environment):
         invalid_penalty = self.INVALID_ACTION_PENALTY if error else 0.0
         reward = progress_delta - self.STEP_PENALTY - invalid_penalty
 
-        done = action.command == "submit" or self._state.step_count >= self._task.max_steps
+        done = (
+            action.command == "submit" or self._state.step_count >= self._task.max_steps
+        )
         if done and action.command != "submit":
             reward -= 0.02
         if done and score >= 0.95:

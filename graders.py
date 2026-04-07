@@ -26,7 +26,9 @@ def _keyword_coverage(reply: str, keywords: tuple[str, ...]) -> float:
     return hits / float(len(keywords))
 
 
-def _grade_process(task: TaskSpec, tickets: Dict[str, Dict], action_history: List[Dict]) -> float:
+def _grade_process(
+    task: TaskSpec, tickets: Dict[str, Dict], action_history: List[Dict]
+) -> float:
     checks: List[float] = []
 
     if task.process_rule.first_action_ticket:
@@ -38,7 +40,9 @@ def _grade_process(task: TaskSpec, tickets: Dict[str, Dict], action_history: Lis
             ),
             None,
         )
-        checks.append(1.0 if first_ticket_action == task.process_rule.first_action_ticket else 0.0)
+        checks.append(
+            1.0 if first_ticket_action == task.process_rule.first_action_ticket else 0.0
+        )
 
     for ticket_id in task.process_rule.must_escalate:
         status = _safe_text(tickets.get(ticket_id, {}).get("status"))
@@ -53,7 +57,9 @@ def _grade_process(task: TaskSpec, tickets: Dict[str, Dict], action_history: Lis
     return sum(checks) / len(checks)
 
 
-def _grade_task(task: TaskSpec, tickets: Dict[str, Dict], action_history: List[Dict]) -> Dict[str, float]:
+def _grade_task(
+    task: TaskSpec, tickets: Dict[str, Dict], action_history: List[Dict]
+) -> Dict[str, float]:
     routing_total = 0.0
     communication_total = 0.0
     ticket_count = max(len(task.goals), 1)
@@ -89,15 +95,21 @@ def _grade_task(task: TaskSpec, tickets: Dict[str, Dict], action_history: List[D
     }
 
 
-def grade_easy_access_recovery(tickets: Dict[str, Dict], action_history: List[Dict]) -> Dict[str, float]:
+def grade_easy_access_recovery(
+    tickets: Dict[str, Dict], action_history: List[Dict]
+) -> Dict[str, float]:
     return _grade_task(TASK_LIBRARY["easy_access_recovery"], tickets, action_history)
 
 
-def grade_medium_billing_dispute(tickets: Dict[str, Dict], action_history: List[Dict]) -> Dict[str, float]:
+def grade_medium_billing_dispute(
+    tickets: Dict[str, Dict], action_history: List[Dict]
+) -> Dict[str, float]:
     return _grade_task(TASK_LIBRARY["medium_billing_dispute"], tickets, action_history)
 
 
-def grade_hard_incident_swarm(tickets: Dict[str, Dict], action_history: List[Dict]) -> Dict[str, float]:
+def grade_hard_incident_swarm(
+    tickets: Dict[str, Dict], action_history: List[Dict]
+) -> Dict[str, float]:
     return _grade_task(TASK_LIBRARY["hard_incident_swarm"], tickets, action_history)
 
 
@@ -108,7 +120,9 @@ TASK_GRADERS = {
 }
 
 
-def grade_for_task(task_name: str, tickets: Dict[str, Dict], action_history: List[Dict]) -> Dict[str, float]:
+def grade_for_task(
+    task_name: str, tickets: Dict[str, Dict], action_history: List[Dict]
+) -> Dict[str, float]:
     grader = TASK_GRADERS.get(task_name)
     if grader is None:
         raise KeyError(f"No grader registered for task: {task_name}")

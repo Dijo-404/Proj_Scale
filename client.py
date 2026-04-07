@@ -23,7 +23,9 @@ except ImportError:
     )
 
 
-class SupportOpsEnv(EnvClient[SupportOpsAction, SupportOpsObservation, SupportOpsState]):
+class SupportOpsEnv(
+    EnvClient[SupportOpsAction, SupportOpsObservation, SupportOpsState]
+):
     """Typed OpenEnv client for the support triage benchmark."""
 
     def _step_payload(self, action: SupportOpsAction) -> Dict:

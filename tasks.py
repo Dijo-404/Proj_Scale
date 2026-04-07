@@ -85,7 +85,9 @@ def _build_task_library() -> Dict[str, TaskSpec]:
                     ),
                 ),
             },
-            process_rule=ProcessRule(first_action_ticket="ACC-1001", must_resolve=("ACC-1001",)),
+            process_rule=ProcessRule(
+                first_action_ticket="ACC-1001", must_resolve=("ACC-1001",)
+            ),
             action_hints=(
                 "Set priority/category/team before submitting.",
                 "Write a practical customer reply that includes concrete next steps.",
