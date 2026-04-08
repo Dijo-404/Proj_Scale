@@ -31,7 +31,7 @@ def root() -> dict:
     return {
         "status": "ok",
         "name": "Proj_Scale",
-        "message": "Support Ops OpenEnv server is running",
+        "message": "Proj_Scale OpenEnv API is running",
     }
 
 

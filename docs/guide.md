@@ -34,6 +34,8 @@ This guide is intended for:
 | `openenv.yaml`                      | OpenEnv environment descriptor (entrypoint, runtime, metadata).                |
 | `Dockerfile`                        | Container build and runtime configuration.                                     |
 | `preval_script.sh`                  | Pre-submission validator for Space ping, Docker build, and openenv validate.   |
+| `docs/guide.md`                     | Detailed architecture, workflow, and operations guide.                         |
+| `tests/`                            | Pytest suite for API, environment behavior, and grader correctness.            |
 
 ---
 
@@ -219,6 +221,16 @@ Terminal shaping:
   - `GET /tasks`
   - `GET /tasks/{task_name}`
 
+Root endpoint expected payload:
+
+```json
+{
+  "status": "ok",
+  "name": "Proj_Scale",
+  "message": "Proj_Scale OpenEnv API is running"
+}
+```
+
 ### 8.2 End-to-end request sequence
 
 ```mermaid
@@ -317,6 +329,13 @@ FORCE_HEURISTIC=1 ENV_BASE_URL=http://127.0.0.1:8000 .venv/bin/python inference.
 ### 10.4 Run baseline in container mode
 
 If `ENV_BASE_URL` is not set, the client can run against a Docker image via `SupportOpsEnv.from_docker_image`.
+
+### 10.5 Run tests and lint checks
+
+```bash
+pytest -q tests
+ruff check .
+```
 
 ---
 
@@ -426,8 +445,9 @@ Before merging substantial benchmark changes:
 1. Confirm all tasks still produce deterministic scores for same action traces.
 2. Confirm reward is still bounded and shaped (not sparse-only).
 3. Run local server and baseline heuristic pass for all tasks.
-4. Build Docker image and run health check.
-5. Run `openenv validate`.
-6. Re-run prevalidation script for deployment readiness.
+4. Run `pytest -q tests` and confirm all tests pass.
+5. Build Docker image and run health check.
+6. Run `openenv validate`.
+7. Re-run prevalidation script for deployment readiness.
 
 This checklist helps preserve benchmark reliability across contributors and model evaluations.

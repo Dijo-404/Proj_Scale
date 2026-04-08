@@ -13,6 +13,7 @@ def test_root_endpoint():
     payload = response.json()
     assert payload["status"] == "ok"
     assert payload["name"] == "Proj_Scale"
+    assert payload["message"] == "Proj_Scale OpenEnv API is running"
 
 
 def test_tasks_endpoint_lists_all_benchmark_tasks():

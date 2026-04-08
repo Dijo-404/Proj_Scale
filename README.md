@@ -49,6 +49,8 @@ flowchart LR
 .
 ├── __init__.py
 ├── client.py
+├── docs/
+│   └── guide.md
 ├── Dockerfile
 ├── graders.py
 ├── inference.py
@@ -58,6 +60,11 @@ flowchart LR
 ├── pyproject.toml
 ├── README.md
 ├── tasks.py
+├── tests/
+│   ├── conftest.py
+│   ├── test_api.py
+│   ├── test_environment.py
+│   └── test_graders.py
 └── server
     ├── __init__.py
     ├── app.py
@@ -220,6 +227,7 @@ uvicorn server.app:app --host 0.0.0.0 --port 8000
 
 Useful endpoints:
 
+- `GET /`
 - `GET /health`
 - `POST /reset`
 - `POST /step`
@@ -233,6 +241,22 @@ Quick smoke test:
 
 ```bash
 curl -sS -X POST http://127.0.0.1:8000/reset -H "Content-Type: application/json" -d '{}'
+```
+
+Root status response:
+
+```bash
+curl -sS http://127.0.0.1:8000/
+```
+
+Expected payload:
+
+```json
+{
+  "status": "ok",
+  "name": "Proj_Scale",
+  "message": "Proj_Scale OpenEnv API is running"
+}
 ```
 
 ## 12) Baseline Inference (`inference.py`)
@@ -310,6 +334,7 @@ Hugging Face Space notes:
 | 3+ tasks with graders              | Implemented | easy/medium/hard tasks in `tasks.py` and graders in `graders.py` |
 | Scores in 0.0-1.0                  | Implemented | Grader clamps and typed observation constraints enforce range    |
 | Reward has partial progress signal | Implemented | delta-score shaped reward with penalties and terminal shaping    |
+| Automated tests pass               | Implemented | `pytest -q tests` passes                                         |
 
 ## 15) Prevalidation Helper
 
@@ -319,7 +344,21 @@ Run included script:
 bash preval_script.sh https://<your-space>.hf.space .
 ```
 
-## 16) Troubleshooting
+## 16) Running Tests
+
+Run the test suite:
+
+```bash
+pytest -q tests
+```
+
+Run lint:
+
+```bash
+ruff check .
+```
+
+## 17) Troubleshooting
 
 - If `openenv validate` fails, confirm `openenv.yaml` is in root and `app: server.app:app` is valid.
 - If inference fails with auth, verify `HF_TOKEN` and `API_BASE_URL`.
