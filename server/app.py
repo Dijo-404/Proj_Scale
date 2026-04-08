@@ -25,6 +25,16 @@ app = create_app(
 )
 
 
+@app.get("/", tags=["Environment Info"])
+def root() -> dict:
+    """Basic root endpoint for Space-level health checks and App tab rendering."""
+    return {
+        "status": "ok",
+        "name": "Proj_Scale",
+        "message": "Support Ops OpenEnv server is running",
+    }
+
+
 @app.get("/tasks", tags=["Environment Info"])
 def list_tasks() -> dict:
     """List available benchmark tasks and their difficulty."""
