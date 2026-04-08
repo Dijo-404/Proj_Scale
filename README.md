@@ -55,12 +55,10 @@ flowchart LR
 ├── preval_script.sh
 ├── pyproject.toml
 ├── README.md
-├── sample_inference_script.py
 ├── tasks.py
 └── server
     ├── __init__.py
     ├── app.py
-    ├── Dockerfile
     ├── requirements.txt
     └── support_ops_environment.py
 ```
