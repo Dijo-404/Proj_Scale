@@ -1,5 +1,5 @@
 spec_version: 1
-name: support_ops_env
+name: Proj_Scale
 type: space
 runtime: fastapi
 app: server.app:app

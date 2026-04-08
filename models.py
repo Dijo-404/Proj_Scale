@@ -56,7 +56,7 @@ class SupportOpsAction(Action):
 class SupportOpsObservation(Observation):
     """Observation model returned on reset and step."""
 
-    benchmark: str = "support_ops_env"
+    benchmark: str = "Proj_Scale"
     task_name: str = ""
     difficulty: Literal["easy", "medium", "hard"] = "easy"
     task_description: str = ""

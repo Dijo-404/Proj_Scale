@@ -20,7 +20,7 @@ app = create_app(
     SupportOpsEnvironment,
     SupportOpsAction,
     SupportOpsObservation,
-    env_name="support_ops_env",
+    env_name="Proj_Scale",
     max_concurrent_envs=4,
 )
 

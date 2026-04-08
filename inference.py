@@ -1,4 +1,4 @@
-"""Baseline inference script for support_ops_env.
+"""Baseline inference script for Proj_Scale.
 
 This script follows the required stdout format:
 [START], [STEP], [END]
@@ -24,10 +24,10 @@ ENV_BASE_URL = os.getenv("ENV_BASE_URL")
 LOCAL_IMAGE_NAME = (
     os.getenv("LOCAL_IMAGE_NAME")
     or os.getenv("IMAGE_NAME")
-    or "support_ops_env-env:latest"
+    or "Proj_Scale-env:latest"
 )
 
-BENCHMARK = os.getenv("BENCHMARK", "support_ops_env")
+BENCHMARK = os.getenv("BENCHMARK", "Proj_Scale")
 SUCCESS_SCORE_THRESHOLD = float(os.getenv("SUCCESS_SCORE_THRESHOLD", "0.75"))
 MAX_STEPS = int(os.getenv("MAX_STEPS", "20"))
 

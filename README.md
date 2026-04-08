@@ -1,5 +1,5 @@
 ---
-title: Support Ops OpenEnv
+title: Proj_Scale OpenEnv
 colorFrom: blue
 colorTo: green
 sdk: docker
@@ -11,9 +11,9 @@ tags:
   - reinforcement-learning
 ---
 
-# Support Ops OpenEnv
+# Proj_Scale OpenEnv
 
-`support_ops_env` is a real-world OpenEnv environment for customer support operations. The agent must triage tickets, route to the correct team, choose escalation vs resolution, and send useful customer responses under SLA pressure.
+`Proj_Scale` is a real-world OpenEnv environment for customer support operations. The agent must triage tickets, route to the correct team, choose escalation vs resolution, and send useful customer responses under SLA pressure.
 
 This is intentionally not a game environment. It models common support workflows in SaaS operations.
 
@@ -278,13 +278,13 @@ hard_incident_swarm: score=1.000
 Build image:
 
 ```bash
-docker build -t support_ops_env-env:latest .
+docker build -t Proj_Scale-env:latest .
 ```
 
 Run container:
 
 ```bash
-docker run --rm -p 8000:8000 support_ops_env-env:latest
+docker run --rm -p 8000:8000 Proj_Scale-env:latest
 ```
 
 Health check:
@@ -305,7 +305,7 @@ Hugging Face Space notes:
 |---|---|---|
 | HF Space responds to reset | Implemented | Endpoint contract and local `/reset` smoke test verified |
 | OpenEnv spec compliance | Implemented | `openenv validate` passes |
-| Docker builds | Implemented | `docker build -t support_ops_env-env:latest .` succeeds |
+| Docker builds | Implemented | `docker build -t Proj_Scale-env:latest .` succeeds |
 | Baseline reproduces | Implemented | Deterministic heuristic run reproduces identical scores |
 | 3+ tasks with graders | Implemented | easy/medium/hard tasks in `tasks.py` and graders in `graders.py` |
 | Scores in 0.0-1.0 | Implemented | Grader clamps and typed observation constraints enforce range |

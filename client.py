@@ -46,7 +46,7 @@ class SupportOpsEnv(
             reward_details = {}
 
         observation = SupportOpsObservation(
-            benchmark=obs_data.get("benchmark", "support_ops_env"),
+            benchmark=obs_data.get("benchmark", "Proj_Scale"),
             task_name=obs_data.get("task_name", ""),
             difficulty=obs_data.get("difficulty", "easy"),
             task_description=obs_data.get("task_description", ""),

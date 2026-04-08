@@ -3,7 +3,7 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "openenv-support_ops_env"
+name = "Proj_Scale"
 version = "1.0.0"
 description = "Support operations triage environment for OpenEnv"
 requires-python = ">=3.10"
@@ -22,9 +22,9 @@ dev = [
 ]
 
 [project.scripts]
-server = "support_ops_env.server.app:main"
+server = "Proj_Scale.server.app:main"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["support_ops_env", "support_ops_env.server"]
-package-dir = { "support_ops_env" = ".", "support_ops_env.server" = "server" }
+packages = ["Proj_Scale", "Proj_Scale.server"]
+package-dir = { "Proj_Scale" = ".", "Proj_Scale.server" = "server" }

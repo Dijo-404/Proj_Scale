@@ -169,7 +169,7 @@ class SupportOpsEnvironment(Environment):
 
     def get_metadata(self) -> EnvironmentMetadata:
         return EnvironmentMetadata(
-            name="support_ops_env",
+            name="Proj_Scale",
             description=(
                 "A real-world support operations environment where agents triage tickets, "
                 "route work, communicate with customers, and optimize SLA outcomes."
@@ -277,7 +277,7 @@ class SupportOpsEnvironment(Environment):
         self._state.selected_ticket = self._selected_ticket
 
         return SupportOpsObservation(
-            benchmark="support_ops_env",
+            benchmark="Proj_Scale",
             task_name=self._task.name,
             difficulty=self._task.difficulty,
             task_description=self._task.description,
