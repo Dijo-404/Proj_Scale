@@ -22,18 +22,18 @@ This guide is intended for:
 
 ## 2. Repository Structure and Responsibilities
 
-| Path | Responsibility |
-| --- | --- |
-| `models.py` | Typed action, observation, reward, and state models used by server and client. |
-| `tasks.py` | Deterministic task library (easy, medium, hard) and target outcomes. |
-| `graders.py` | Deterministic scoring logic for routing, communication, and process quality. |
-| `server/support_ops_environment.py` | Core environment state machine and reward shaping. |
-| `server/app.py` | FastAPI app wiring OpenEnv server plus task introspection endpoints. |
-| `client.py` | Typed OpenEnv client used by inference or external agents. |
-| `inference.py` | Baseline runner with heuristic or model-driven action generation. |
-| `openenv.yaml` | OpenEnv environment descriptor (entrypoint, runtime, metadata). |
-| `Dockerfile` | Container build and runtime configuration. |
-| `preval_script.sh` | Pre-submission validator for Space ping, Docker build, and openenv validate. |
+| Path                                | Responsibility                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------------ |
+| `models.py`                         | Typed action, observation, reward, and state models used by server and client. |
+| `tasks.py`                          | Deterministic task library (easy, medium, hard) and target outcomes.           |
+| `graders.py`                        | Deterministic scoring logic for routing, communication, and process quality.   |
+| `server/support_ops_environment.py` | Core environment state machine and reward shaping.                             |
+| `server/app.py`                     | FastAPI app wiring OpenEnv server plus task introspection endpoints.           |
+| `client.py`                         | Typed OpenEnv client used by inference or external agents.                     |
+| `inference.py`                      | Baseline runner with heuristic or model-driven action generation.              |
+| `openenv.yaml`                      | OpenEnv environment descriptor (entrypoint, runtime, metadata).                |
+| `Dockerfile`                        | Container build and runtime configuration.                                     |
+| `preval_script.sh`                  | Pre-submission validator for Space ping, Docker build, and openenv validate.   |
 
 ---
 
@@ -69,12 +69,12 @@ flowchart LR
 
 ### 4.1 Action model (`SupportOpsAction`)
 
-| Field | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `command` | enum | Yes | One of `set_priority`, `set_category`, `assign_team`, `set_status`, `reply`, `submit`. |
-| `ticket_id` | string | Usually | Required for all commands except `submit`. |
-| `value` | string | Conditional | Required for classification/routing/status commands. |
-| `message` | string | Conditional | Used only for `reply`. |
+| Field       | Type   | Required    | Notes                                                                                  |
+| ----------- | ------ | ----------- | -------------------------------------------------------------------------------------- |
+| `command`   | enum   | Yes         | One of `set_priority`, `set_category`, `assign_team`, `set_status`, `reply`, `submit`. |
+| `ticket_id` | string | Usually     | Required for all commands except `submit`.                                             |
+| `value`     | string | Conditional | Required for classification/routing/status commands.                                   |
+| `message`   | string | Conditional | Used only for `reply`.                                                                 |
 
 ### 4.2 Observation model (`SupportOpsObservation`)
 
@@ -106,11 +106,11 @@ Exposed through state endpoint and client parsing:
 
 The benchmark contains 3 deterministic scenarios:
 
-| Task | Difficulty | Intent |
-| --- | --- | --- |
-| `easy_access_recovery` | easy | Single ticket with straightforward access recovery workflow. |
-| `medium_billing_dispute` | medium | Two billing tickets requiring proper urgency ordering and escalation logic. |
-| `hard_incident_swarm` | hard | Outage + security + feature request during surge conditions with strict prioritization. |
+| Task                     | Difficulty | Intent                                                                                  |
+| ------------------------ | ---------- | --------------------------------------------------------------------------------------- |
+| `easy_access_recovery`   | easy       | Single ticket with straightforward access recovery workflow.                            |
+| `medium_billing_dispute` | medium     | Two billing tickets requiring proper urgency ordering and escalation logic.             |
+| `hard_incident_swarm`    | hard       | Outage + security + feature request during surge conditions with strict prioritization. |
 
 Each task defines:
 
@@ -385,13 +385,13 @@ bash preval_script.sh https://<your-space>.hf.space .
 
 ### 13.1 Common issues
 
-| Symptom | Likely cause | Fix |
-| --- | --- | --- |
-| Invalid action penalties spike | Wrong enum values or missing `ticket_id` | Validate action payloads before calling step. |
-| Low communication score | Missing required keywords or short replies | Include task-specific keywords and sufficient detail in reply text. |
-| Space reset endpoint fails | Space not running or wrong URL | Verify Space status and ping URL. |
-| Docker healthcheck fails | API not binding expected host/port | Confirm `uvicorn` host `0.0.0.0` and port `8000`. |
-| Validation fails | Missing OpenEnv fields or bad app entrypoint | Confirm `openenv.yaml` and `server.app:app`. |
+| Symptom                        | Likely cause                                 | Fix                                                                 |
+| ------------------------------ | -------------------------------------------- | ------------------------------------------------------------------- |
+| Invalid action penalties spike | Wrong enum values or missing `ticket_id`     | Validate action payloads before calling step.                       |
+| Low communication score        | Missing required keywords or short replies   | Include task-specific keywords and sufficient detail in reply text. |
+| Space reset endpoint fails     | Space not running or wrong URL               | Verify Space status and ping URL.                                   |
+| Docker healthcheck fails       | API not binding expected host/port           | Confirm `uvicorn` host `0.0.0.0` and port `8000`.                   |
+| Validation fails               | Missing OpenEnv fields or bad app entrypoint | Confirm `openenv.yaml` and `server.app:app`.                        |
 
 ### 13.2 Debugging tips
 

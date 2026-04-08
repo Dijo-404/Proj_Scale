@@ -11,6 +11,8 @@ tags:
   - reinforcement-learning
 ---
 
+<!-- markdownlint-disable MD025 -->
+
 # Proj_Scale OpenEnv
 
 `Proj_Scale` is a real-world OpenEnv environment for customer support operations. The agent must triage tickets, route to the correct team, choose escalation vs resolution, and send useful customer responses under SLA pressure.
@@ -88,12 +90,12 @@ Expected result:
 
 Action model: `SupportOpsAction`
 
-| Field | Type | Notes |
-|---|---|---|
-| `command` | enum | `set_priority`, `set_category`, `assign_team`, `set_status`, `reply`, `submit` |
-| `ticket_id` | string or null | Required for all commands except `submit` |
-| `value` | string or null | Used by classification/routing/status commands |
-| `message` | string or null | Used by `reply` |
+| Field       | Type           | Notes                                                                          |
+| ----------- | -------------- | ------------------------------------------------------------------------------ |
+| `command`   | enum           | `set_priority`, `set_category`, `assign_team`, `set_status`, `reply`, `submit` |
+| `ticket_id` | string or null | Required for all commands except `submit`                                      |
+| `value`     | string or null | Used by classification/routing/status commands                                 |
+| `message`   | string or null | Used by `reply`                                                                |
 
 Command semantics:
 
@@ -126,11 +128,11 @@ State model: `SupportOpsState`
 
 All tasks are deterministic and have explicit target outcomes.
 
-| Task | Difficulty | Goal |
-|---|---|---|
-| `easy_access_recovery` | easy | Single account-lockout workflow, complete routing + reply + resolve |
-| `medium_billing_dispute` | medium | Handle critical enterprise billing issue and routine invoice request with correct priority ordering |
-| `hard_incident_swarm` | hard | Coordinate outage + security + feature tickets, escalations first, feature remains in progress |
+| Task                     | Difficulty | Goal                                                                                                |
+| ------------------------ | ---------- | --------------------------------------------------------------------------------------------------- |
+| `easy_access_recovery`   | easy       | Single account-lockout workflow, complete routing + reply + resolve                                 |
+| `medium_billing_dispute` | medium     | Handle critical enterprise billing issue and routine invoice request with correct priority ordering |
+| `hard_incident_swarm`    | hard       | Coordinate outage + security + feature tickets, escalations first, feature remains in progress      |
 
 ## 8) Grader Design and Score Range
 
@@ -243,19 +245,19 @@ The baseline script satisfies the required output protocol:
 
 Mandatory environment variables for submission:
 
-| Variable | Purpose |
-|---|---|
-| `API_BASE_URL` | LLM API endpoint |
-| `MODEL_NAME` | Model identifier |
-| `HF_TOKEN` | Hugging Face/API token |
+| Variable       | Purpose                |
+| -------------- | ---------------------- |
+| `API_BASE_URL` | LLM API endpoint       |
+| `MODEL_NAME`   | Model identifier       |
+| `HF_TOKEN`     | Hugging Face/API token |
 
 Optional useful variables:
 
-| Variable | Purpose |
-|---|---|
-| `ENV_BASE_URL` | Connect to already running environment |
+| Variable           | Purpose                                      |
+| ------------------ | -------------------------------------------- |
+| `ENV_BASE_URL`     | Connect to already running environment       |
 | `LOCAL_IMAGE_NAME` | Docker image for local container-mode client |
-| `FORCE_HEURISTIC` | Force deterministic no-LLM baseline |
+| `FORCE_HEURISTIC`  | Force deterministic no-LLM baseline          |
 
 Run deterministic baseline against local server:
 
@@ -299,15 +301,15 @@ Hugging Face Space notes:
 
 ## 14) Pre-Submission Checklist Mapping
 
-| Checklist Item | Status | Evidence |
-|---|---|---|
-| HF Space responds to reset | Implemented | Endpoint contract and local `/reset` smoke test verified |
-| OpenEnv spec compliance | Implemented | `openenv validate` passes |
-| Docker builds | Implemented | `docker build -t Proj_Scale-env:latest .` succeeds |
-| Baseline reproduces | Implemented | Deterministic heuristic run reproduces identical scores |
-| 3+ tasks with graders | Implemented | easy/medium/hard tasks in `tasks.py` and graders in `graders.py` |
-| Scores in 0.0-1.0 | Implemented | Grader clamps and typed observation constraints enforce range |
-| Reward has partial progress signal | Implemented | delta-score shaped reward with penalties and terminal shaping |
+| Checklist Item                     | Status      | Evidence                                                         |
+| ---------------------------------- | ----------- | ---------------------------------------------------------------- |
+| HF Space responds to reset         | Implemented | Endpoint contract and local `/reset` smoke test verified         |
+| OpenEnv spec compliance            | Implemented | `openenv validate` passes                                        |
+| Docker builds                      | Implemented | `docker build -t Proj_Scale-env:latest .` succeeds               |
+| Baseline reproduces                | Implemented | Deterministic heuristic run reproduces identical scores          |
+| 3+ tasks with graders              | Implemented | easy/medium/hard tasks in `tasks.py` and graders in `graders.py` |
+| Scores in 0.0-1.0                  | Implemented | Grader clamps and typed observation constraints enforce range    |
+| Reward has partial progress signal | Implemented | delta-score shaped reward with penalties and terminal shaping    |
 
 ## 15) Prevalidation Helper
 
