@@ -9,6 +9,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import sys
+import traceback
 from typing import Dict, List, Optional
 
 from openai import OpenAI
@@ -24,7 +26,7 @@ ENV_BASE_URL = os.getenv("ENV_BASE_URL")
 LOCAL_IMAGE_NAME = (
     os.getenv("LOCAL_IMAGE_NAME")
     or os.getenv("IMAGE_NAME")
-    or "Proj_Scale-env:latest"
+    or "proj_scale-env:latest"
 )
 
 BENCHMARK = os.getenv("BENCHMARK", "Proj_Scale")
@@ -147,96 +149,108 @@ def _action_to_str(action: SupportOpsAction) -> str:
 
 
 def _heuristic_action(observation) -> SupportOpsAction:
-    tickets = list(observation.tickets)
+    try:
+        tickets = list(observation.tickets)
+    except Exception:
+        return SupportOpsAction(command="submit")
 
     for ticket in tickets:
-        target = TARGET_FIELDS.get(ticket.ticket_id)
-        if target is None:
+        try:
+            target = TARGET_FIELDS.get(ticket.ticket_id)
+            if target is None:
+                continue
+
+            if ticket.priority != target["priority"]:
+                return SupportOpsAction(
+                    command="set_priority",
+                    ticket_id=ticket.ticket_id,
+                    value=target["priority"],
+                )
+
+            if ticket.category != target["category"]:
+                return SupportOpsAction(
+                    command="set_category",
+                    ticket_id=ticket.ticket_id,
+                    value=target["category"],
+                )
+
+            if ticket.team != target["team"]:
+                return SupportOpsAction(
+                    command="assign_team",
+                    ticket_id=ticket.ticket_id,
+                    value=target["team"],
+                )
+
+            if not ticket.last_reply:
+                return SupportOpsAction(
+                    command="reply",
+                    ticket_id=ticket.ticket_id,
+                    message=REPLY_TEMPLATES.get(
+                        ticket.ticket_id, "Acknowledged. Working on this now."
+                    ),
+                )
+
+            if ticket.status != target["status"]:
+                return SupportOpsAction(
+                    command="set_status",
+                    ticket_id=ticket.ticket_id,
+                    value=target["status"],
+                )
+        except Exception:
             continue
-
-        if ticket.priority != target["priority"]:
-            return SupportOpsAction(
-                command="set_priority",
-                ticket_id=ticket.ticket_id,
-                value=target["priority"],
-            )
-
-        if ticket.category != target["category"]:
-            return SupportOpsAction(
-                command="set_category",
-                ticket_id=ticket.ticket_id,
-                value=target["category"],
-            )
-
-        if ticket.team != target["team"]:
-            return SupportOpsAction(
-                command="assign_team",
-                ticket_id=ticket.ticket_id,
-                value=target["team"],
-            )
-
-        if not ticket.last_reply:
-            return SupportOpsAction(
-                command="reply",
-                ticket_id=ticket.ticket_id,
-                message=REPLY_TEMPLATES.get(
-                    ticket.ticket_id, "Acknowledged. Working on this now."
-                ),
-            )
-
-        if ticket.status != target["status"]:
-            return SupportOpsAction(
-                command="set_status",
-                ticket_id=ticket.ticket_id,
-                value=target["status"],
-            )
 
     return SupportOpsAction(command="submit")
 
 
 def _model_action(client: OpenAI, observation) -> SupportOpsAction:
-    ticket_summaries = []
-    for ticket in observation.tickets:
-        ticket_summaries.append(
-            {
-                "ticket_id": ticket.ticket_id,
-                "subject": ticket.subject,
-                "tier": ticket.customer_tier,
-                "sla_hours": ticket.sla_hours,
-                "priority": ticket.priority,
-                "category": ticket.category,
-                "team": ticket.team,
-                "status": ticket.status,
-                "has_reply": bool(ticket.last_reply),
-            }
+    try:
+        ticket_summaries = []
+        for ticket in observation.tickets:
+            ticket_summaries.append(
+                {
+                    "ticket_id": ticket.ticket_id,
+                    "subject": ticket.subject,
+                    "tier": ticket.customer_tier,
+                    "sla_hours": ticket.sla_hours,
+                    "priority": ticket.priority,
+                    "category": ticket.category,
+                    "team": ticket.team,
+                    "status": ticket.status,
+                    "has_reply": bool(ticket.last_reply),
+                }
+            )
+
+        user_prompt = {
+            "task": observation.task_name,
+            "difficulty": observation.difficulty,
+            "remaining_steps": observation.remaining_steps,
+            "score": observation.score,
+            "tickets": ticket_summaries,
+            "action_hints": observation.action_hints,
+        }
+
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            temperature=0.0,
+            max_tokens=220,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": json.dumps(user_prompt, ensure_ascii=True)},
+            ],
+            stream=False,
         )
 
-    user_prompt = {
-        "task": observation.task_name,
-        "difficulty": observation.difficulty,
-        "remaining_steps": observation.remaining_steps,
-        "score": observation.score,
-        "tickets": ticket_summaries,
-        "action_hints": observation.action_hints,
-    }
+        content = (completion.choices[0].message.content or "").strip()
 
-    completion = client.chat.completions.create(
-        model=MODEL_NAME,
-        temperature=0.0,
-        max_tokens=220,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": json.dumps(user_prompt, ensure_ascii=True)},
-        ],
-        stream=False,
-    )
+        try:
+            payload = json.loads(content)
+            return SupportOpsAction(**payload)
+        except Exception:
+            return _heuristic_action(observation)
 
-    content = (completion.choices[0].message.content or "").strip()
-
-    try:
-        payload = json.loads(content)
-        return SupportOpsAction(**payload)
     except Exception:
+        # Any LLM error (network, auth, rate limit, malformed response) —
+        # fall back to deterministic heuristic so the script never crashes.
         return _heuristic_action(observation)
 
 
@@ -251,36 +265,73 @@ async def run_task(
     log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        result = await env.reset(task_name=task_name)
+        try:
+            result = await env.reset(task_name=task_name)
+        except Exception as exc:
+            log_step(
+                step=1,
+                action='{"command":"reset"}',
+                reward=0.0,
+                done=True,
+                error=f"reset failed: {exc}",
+            )
+            return 0.0
 
         for step in range(1, MAX_STEPS + 1):
-            if result.done:
+            try:
+                if result.done:
+                    break
+
+                if client is None:
+                    action = _heuristic_action(result.observation)
+                else:
+                    action = _model_action(client, result.observation)
+
+                action_str = _action_to_str(action)
+
+                try:
+                    result = await env.step(action)
+                except Exception as exc:
+                    log_step(
+                        step=step,
+                        action=action_str,
+                        reward=0.0,
+                        done=True,
+                        error=f"step failed: {exc}",
+                    )
+                    steps_taken = step
+                    break
+
+                reward = float(result.reward or 0.0)
+                rewards.append(reward)
+                steps_taken = step
+
+                log_step(
+                    step=step,
+                    action=action_str,
+                    reward=reward,
+                    done=bool(result.done),
+                    error=result.observation.last_action_error,
+                )
+
+                if result.done:
+                    break
+
+            except Exception as exc:
+                log_step(
+                    step=step,
+                    action='{"command":"error"}',
+                    reward=0.0,
+                    done=True,
+                    error=f"step processing error: {exc}",
+                )
+                steps_taken = step
                 break
 
-            if client is None:
-                action = _heuristic_action(result.observation)
-            else:
-                action = _model_action(client, result.observation)
-
-            action_str = _action_to_str(action)
-            result = await env.step(action)
-
-            reward = float(result.reward or 0.0)
-            rewards.append(reward)
-            steps_taken = step
-
-            log_step(
-                step=step,
-                action=action_str,
-                reward=reward,
-                done=bool(result.done),
-                error=result.observation.last_action_error,
-            )
-
-            if result.done:
-                break
-
-        score = float(result.observation.score)
+        try:
+            score = float(result.observation.score)
+        except Exception:
+            score = 0.0
         success = score >= SUCCESS_SCORE_THRESHOLD
         return score
     finally:
@@ -289,19 +340,61 @@ async def run_task(
 
 async def main() -> None:
     use_model = bool(API_KEY) and (not FORCE_HEURISTIC)
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY) if use_model else None
 
-    if ENV_BASE_URL:
-        env = SupportOpsEnv(base_url=ENV_BASE_URL)
-        await env.connect()
-    else:
-        env = await SupportOpsEnv.from_docker_image(LOCAL_IMAGE_NAME)
+    try:
+        client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY) if use_model else None
+    except Exception:
+        client = None
+
+    env: Optional[SupportOpsEnv] = None
+
+    try:
+        if ENV_BASE_URL:
+            env = SupportOpsEnv(base_url=ENV_BASE_URL)
+            await env.connect()
+        else:
+            try:
+                env = await SupportOpsEnv.from_docker_image(LOCAL_IMAGE_NAME)
+            except Exception as exc:
+                print(
+                    f"[ERROR] Could not start environment container: {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                # Emit empty [START]/[END] for each task so the output protocol
+                # is satisfied even when the environment is unreachable.
+                for task in TASKS:
+                    log_start(task=task, env=BENCHMARK, model=MODEL_NAME)
+                    log_end(success=False, steps=0, score=0.0, rewards=[])
+                return
+    except Exception as exc:
+        print(
+            f"[ERROR] Could not connect to environment: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+        for task in TASKS:
+            log_start(task=task, env=BENCHMARK, model=MODEL_NAME)
+            log_end(success=False, steps=0, score=0.0, rewards=[])
+        return
 
     try:
         for task in TASKS:
-            await run_task(env, task, client)
+            try:
+                await run_task(env, task, client)
+            except Exception as exc:
+                # Ensure we never crash on a single task — log and continue.
+                print(
+                    f"[ERROR] Task {task} failed unexpectedly: {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                traceback.print_exc(file=sys.stderr)
     finally:
-        await env.close()
+        try:
+            await env.close()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":
