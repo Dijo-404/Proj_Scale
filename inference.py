@@ -250,9 +250,9 @@ async def run_task(
 
     log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
 
-    result = await env.reset(task_name=task_name)
-
     try:
+        result = await env.reset(task_name=task_name)
+
         for step in range(1, MAX_STEPS + 1):
             if result.done:
                 break
