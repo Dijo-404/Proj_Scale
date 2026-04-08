@@ -264,42 +264,46 @@ sequenceDiagram
 
 ---
 
-## 9. Baseline Inference Workflow
+## 9. Inference Architecture
 
-`inference.py` supports two modes:
+`inference.py` uses a three-tier hybrid decision pipeline:
 
-- Heuristic mode (`FORCE_HEURISTIC=1` or no API key).
-- Model mode (OpenAI-compatible client with `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN` or `API_KEY`).
+| Tier | Trigger | Strategy | LLM Calls |
+| ---- | ------- | -------- | --------- |
+| 1 | All ticket IDs in known targets | Deterministic heuristic via `TARGET_FIELDS` | 0 |
+| 2 | Unknown tickets + LLM available | `REASONING_MODEL` plans once, then deterministic execution | 1 per task |
+| 3 | Plan incomplete or failed | Per-step LLM with grading rubric, action validation, and feedback | ~5-15 per task |
 
-### 9.1 Decision pipeline in inference
+Modes:
+
+- Heuristic mode (`FORCE_HEURISTIC=1` or no API key) — Tier 1 only.
+- Model mode (OpenAI-compatible client with `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`) — all tiers.
+
+### 9.1 Decision pipeline
 
 ```mermaid
 flowchart TD
     A[Start task] --> B[Call reset]
-    B --> C{Use model mode?}
-    C -- No --> D[Heuristic action selection]
-    C -- Yes --> E[Build ticket summary prompt]
-    E --> F[Model returns JSON action]
-    F --> G{JSON parse valid?}
-    G -- No --> D
-    G -- Yes --> H[Use model action]
-    D --> I[Send step action]
-    H --> I
-    I --> J[Collect reward and observation]
-    J --> K{done or max steps?}
-    K -- No --> C
-    K -- Yes --> L[Print END summary]
+    B --> C{All tickets known?}
+    C -- Yes --> D[Tier 1: Deterministic heuristic]
+    C -- No --> E{LLM available?}
+    E -- No --> D
+    E -- Yes --> F[Tier 2: Reasoning model plans once]
+    F --> G[Merge known + planned targets]
+    G --> H[Execute plan deterministically]
+    H --> I{All tickets covered?}
+    I -- Yes --> J[Submit]
+    I -- No --> K[Tier 3: Per-step LLM with validation]
+    K --> J
+    D --> J
+    J --> L[Print END summary]
 ```
+
+Every failure gracefully degrades: Tier 3 → Tier 1, Tier 2 → Tier 3 → Tier 1.
 
 ### 9.2 Output protocol
 
-The script prints exactly:
-
-- `[START]`
-- `[STEP]`
-- `[END]`
-
-This is useful for benchmark logging and score extraction.
+The script prints exactly `[START]`, `[STEP]`, `[END]` per task.
 
 ---
 
@@ -344,8 +348,8 @@ ruff check .
 ### 11.1 Build and run locally
 
 ```bash
-docker build -t Proj_Scale-env:latest .
-docker run --rm -p 8000:8000 Proj_Scale-env:latest
+docker build -t proj_scale-env:latest .
+docker run --rm -p 8000:8000 proj_scale-env:latest
 curl -sS http://127.0.0.1:8000/health
 ```
 

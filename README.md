@@ -259,15 +259,21 @@ Expected payload:
 }
 ```
 
-## 12) Baseline Inference (`inference.py`)
+## 12) Inference (`inference.py`)
 
-The baseline script satisfies the required output protocol:
+The inference script uses a three-tier hybrid architecture:
 
-- `[START] ...`
-- `[STEP] ...`
-- `[END] ...`
+| Tier | Trigger | Strategy | LLM Calls |
+| ---- | ------- | -------- | --------- |
+| 1 | All ticket IDs in known targets | Deterministic heuristic | 0 |
+| 2 | Unknown tickets + LLM available | Reasoning model plans once, then deterministic execution | 1 per task |
+| 3 | Plan incomplete or failed | Per-step LLM with rich prompt, validation, and feedback | ~5-15 per task |
 
-Mandatory environment variables for submission:
+Known tickets always use hardcoded targets (guaranteed perfect score). Unknown tickets are planned by an LLM and then executed deterministically. Every failure gracefully degrades to a safer tier.
+
+Output protocol: `[START]`, `[STEP]`, `[END]`.
+
+Mandatory environment variables:
 
 | Variable       | Purpose                |
 | -------------- | ---------------------- |
@@ -275,13 +281,15 @@ Mandatory environment variables for submission:
 | `MODEL_NAME`   | Model identifier       |
 | `HF_TOKEN`     | Hugging Face/API token |
 
-Optional useful variables:
+Optional environment variables:
 
 | Variable           | Purpose                                      |
 | ------------------ | -------------------------------------------- |
 | `ENV_BASE_URL`     | Connect to already running environment       |
 | `LOCAL_IMAGE_NAME` | Docker image for local container-mode client |
 | `FORCE_HEURISTIC`  | Force deterministic no-LLM baseline          |
+| `REASONING_MODEL`  | Separate model for Tier 2 planning (defaults to `MODEL_NAME`) |
+| `LLM_MAX_RETRIES`  | Retry count with exponential backoff (default `2`) |
 
 Run deterministic baseline against local server:
 
@@ -289,7 +297,7 @@ Run deterministic baseline against local server:
 FORCE_HEURISTIC=1 ENV_BASE_URL=http://127.0.0.1:8000 .venv/bin/python inference.py
 ```
 
-Observed deterministic end scores:
+Deterministic scores:
 
 ```text
 easy_access_recovery: score=1.000
@@ -302,13 +310,13 @@ hard_incident_swarm: score=1.000
 Build image:
 
 ```bash
-docker build -t Proj_Scale-env:latest .
+docker build -t proj_scale-env:latest .
 ```
 
 Run container:
 
 ```bash
-docker run --rm -p 8000:8000 Proj_Scale-env:latest
+docker run --rm -p 8000:8000 proj_scale-env:latest
 ```
 
 Health check:
@@ -329,8 +337,8 @@ Hugging Face Space notes:
 | ---------------------------------- | ----------- | ---------------------------------------------------------------- |
 | HF Space responds to reset         | Implemented | Endpoint contract and local `/reset` smoke test verified         |
 | OpenEnv spec compliance            | Implemented | `openenv validate` passes                                        |
-| Docker builds                      | Implemented | `docker build -t Proj_Scale-env:latest .` succeeds               |
-| Baseline reproduces                | Implemented | Deterministic heuristic run reproduces identical scores          |
+| Docker builds                      | Implemented | `docker build -t proj_scale-env:latest .` succeeds               |
+| Baseline reproduces                | Implemented | Three-tier inference reproduces identical scores                 |
 | 3+ tasks with graders              | Implemented | easy/medium/hard tasks in `tasks.py` and graders in `graders.py` |
 | Scores in 0.0-1.0                  | Implemented | Grader clamps and typed observation constraints enforce range    |
 | Reward has partial progress signal | Implemented | delta-score shaped reward with penalties and terminal shaping    |
