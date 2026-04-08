@@ -1,8 +1,6 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
-# Ensure tests can import both top-level modules (models.py, server/) and
-# the package form (Proj_Scale.*) regardless of the current working directory.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_PARENT = PROJECT_ROOT.parent
 
