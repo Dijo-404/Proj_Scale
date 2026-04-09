@@ -566,12 +566,12 @@ def _choose_action(
     if action.command != "submit":
         return action
 
-    if has_unknown_tickets:
+    # When heuristic says submit, double-check with LLM if any ticket looks incomplete
+    if client is not None:
         try:
             for t in observation.tickets:
                 if t.priority is None or t.category is None or t.team is None or not t.last_reply:
-                    if client is not None:
-                        return _model_action_per_step(client, observation, action_history)
+                    return _model_action_per_step(client, observation, action_history)
         except Exception:
             pass
 
@@ -602,7 +602,7 @@ async def run_task(
         )
 
         plan: Optional[Dict] = None
-        if has_unknown and client is not None:
+        if client is not None:
             plan = _plan_episode(client, result.observation)
 
         targets, replies, order = _merge_targets(result.observation, plan)
