@@ -583,7 +583,7 @@ async def run_task(
 ) -> float:
     rewards: List[float] = []
     steps_taken = 0
-    score = 0.0
+    score = 0.001
     success = False
     action_history: List[Dict] = []
 
@@ -595,7 +595,7 @@ async def run_task(
         except Exception as exc:
             log_step(step=1, action='{"command":"reset"}', reward=0.0,
                      done=True, error=f"reset failed: {exc}")
-            return 0.0
+            return 0.001
 
         has_unknown = any(
             t.ticket_id not in TARGET_FIELDS for t in result.observation.tickets
@@ -654,6 +654,8 @@ async def run_task(
             score = float(result.observation.score)
         except Exception:
             score = 0.0
+        # Clamp to open interval (0, 1) — validator rejects exactly 0.0 and 1.0
+        score = max(0.001, min(0.999, score))
         success = score >= SUCCESS_SCORE_THRESHOLD
         return score
     finally:
@@ -682,14 +684,14 @@ async def main() -> None:
                       file=sys.stderr, flush=True)
                 for task in TASKS:
                     log_start(task=task, env=BENCHMARK, model=MODEL_NAME)
-                    log_end(success=False, steps=0, score=0.0, rewards=[])
+                    log_end(success=False, steps=0, score=0.001, rewards=[])
                 return
     except Exception as exc:
         print(f"[ERROR] Environment connection failed: {exc}",
               file=sys.stderr, flush=True)
         for task in TASKS:
             log_start(task=task, env=BENCHMARK, model=MODEL_NAME)
-            log_end(success=False, steps=0, score=0.0, rewards=[])
+            log_end(success=False, steps=0, score=0.001, rewards=[])
         return
 
     try:
