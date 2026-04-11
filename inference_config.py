@@ -43,7 +43,7 @@ class InferenceSettings:
     api_base_url: str
     model_name: str
     reasoning_model: str
-    hf_token: Optional[str]
+    api_key: Optional[str]
     env_base_url: Optional[str]
     local_image_name: str
     benchmark: str
@@ -71,7 +71,7 @@ class InferenceSettings:
             api_base_url=os.getenv("API_BASE_URL", "https://router.huggingface.co/v1"),
             model_name=model_name,
             reasoning_model=os.getenv("REASONING_MODEL", model_name),
-            hf_token=os.getenv("HF_TOKEN"),
+            api_key=os.getenv("API_KEY") or os.getenv("HF_TOKEN"),
             env_base_url=os.getenv("ENV_BASE_URL"),
             local_image_name=(
                 os.getenv("LOCAL_IMAGE_NAME")
@@ -110,7 +110,7 @@ class InferenceSettings:
             api_base_url=api_base_url or self.api_base_url,
             model_name=next_model,
             reasoning_model=next_reasoning_model,
-            hf_token=self.hf_token,
+            api_key=self.api_key,
             env_base_url=env_base_url if env_base_url is not None else self.env_base_url,
             local_image_name=local_image_name or self.local_image_name,
             benchmark=self.benchmark,

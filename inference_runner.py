@@ -64,12 +64,12 @@ def _build_llm_client(settings: InferenceSettings) -> Optional[OpenAI]:
     if not settings.use_llm:
         return None
 
-    if not settings.hf_token:
+    if not settings.api_key:
         raise ValueError(
-            "HF_TOKEN is required unless FORCE_HEURISTIC=1 is set for deterministic baseline mode."
+            "API_KEY (or HF_TOKEN) is required unless FORCE_HEURISTIC=1 is set for deterministic baseline mode."
         )
 
-    return OpenAI(base_url=settings.api_base_url, api_key=settings.hf_token)
+    return OpenAI(base_url=settings.api_base_url, api_key=settings.api_key)
 
 
 async def run_task(
