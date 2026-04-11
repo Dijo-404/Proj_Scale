@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 
 from inference_config import InferenceSettings
 from inference_runner import run_inference
@@ -69,8 +70,26 @@ def _resolve_settings(base: InferenceSettings, args: argparse.Namespace) -> Infe
     )
 
 
+def _read_required_env() -> tuple[str, str, str]:
+    """Read required runtime env vars for hackathon submission compatibility."""
+
+    api_base_url = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+    model_name = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+    hf_token = os.getenv("HF_TOKEN")
+
+    if not hf_token:
+        raise ValueError("HF_TOKEN environment variable is required")
+
+    return api_base_url, model_name, hf_token
+
+
 async def _async_main() -> int:
-    base_settings = InferenceSettings.from_env()
+    api_base_url, model_name, hf_token = _read_required_env()
+    base_settings = InferenceSettings.from_env(
+        api_base_url=api_base_url,
+        model_name=model_name,
+        hf_token=hf_token,
+    )
     parser = _build_parser(base_settings)
     args = parser.parse_args()
 

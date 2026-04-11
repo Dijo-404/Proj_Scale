@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -229,6 +230,7 @@ def _llm_call(
         except Exception as exc:
             print(
                 f"[WARN] LLM call failed on attempt {attempt + 1}/{settings.llm_max_retries + 1}: {exc}",
+                file=sys.stderr,
                 flush=True,
             )
             if attempt < settings.llm_max_retries:
@@ -313,7 +315,11 @@ def plan_episode(
 
     payload = _extract_json(content)
     if payload is None or not isinstance(payload.get("tickets"), dict):
-        print("[WARN] Unable to parse episode planning output; falling back.", flush=True)
+        print(
+            "[WARN] Unable to parse episode planning output; falling back.",
+            file=sys.stderr,
+            flush=True,
+        )
         return None
 
     return payload

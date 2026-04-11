@@ -35,14 +35,14 @@ def log_step(
 ) -> None:
     display_error = error if error else "null"
     print(
-        f"[STEP] step={step} action={action} reward={reward:.4f} "
+        f"[STEP] step={step} action={action} reward={reward:.2f} "
         f"done={str(done).lower()} error={display_error}",
         flush=True,
     )
 
 
 def log_end(success: bool, steps: int, rewards: List[float]) -> None:
-    rewards_str = ",".join(f"{reward:.4f}" for reward in rewards)
+    rewards_str = ",".join(f"{reward:.2f}" for reward in rewards)
     print(
         f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
         flush=True,
@@ -65,9 +65,7 @@ def _build_llm_client(settings: InferenceSettings) -> Optional[OpenAI]:
         return None
 
     if not settings.api_key:
-        raise ValueError(
-            "API_KEY (or HF_TOKEN) is required unless FORCE_HEURISTIC=1 is set for deterministic baseline mode."
-        )
+        raise ValueError("HF_TOKEN environment variable is required")
 
     return OpenAI(base_url=settings.api_base_url, api_key=settings.api_key)
 
@@ -173,6 +171,10 @@ async def run_inference(settings: InferenceSettings) -> int:
             try:
                 await env.close()
             except Exception as close_exc:
-                print(f"[WARN] Failed to close environment cleanly: {close_exc}", flush=True)
+                print(
+                    f"[WARN] Failed to close environment cleanly: {close_exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
 
         log_end(success=success, steps=steps, rewards=rewards)

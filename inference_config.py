@@ -59,19 +59,31 @@ class InferenceSettings:
         return not self.force_heuristic
 
     @classmethod
-    def from_env(cls) -> "InferenceSettings":
+    def from_env(
+        cls,
+        *,
+        api_base_url: Optional[str] = None,
+        model_name: Optional[str] = None,
+        hf_token: Optional[str] = None,
+    ) -> "InferenceSettings":
         task_names = tuple(available_tasks())
         default_task = task_names[0] if task_names else "easy_access_recovery"
         task_name = os.getenv("TASK_NAME", default_task)
         if task_name not in task_names:
             task_name = default_task
 
-        model_name = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+        resolved_model_name = model_name or os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+        resolved_api_base_url = api_base_url or os.getenv(
+            "API_BASE_URL",
+            "https://router.huggingface.co/v1",
+        )
+        resolved_hf_token = hf_token if hf_token is not None else os.getenv("HF_TOKEN")
+
         return cls(
-            api_base_url=os.getenv("API_BASE_URL", "https://router.huggingface.co/v1"),
-            model_name=model_name,
-            reasoning_model=os.getenv("REASONING_MODEL", model_name),
-            api_key=os.getenv("API_KEY") or os.getenv("HF_TOKEN"),
+            api_base_url=resolved_api_base_url,
+            model_name=resolved_model_name,
+            reasoning_model=os.getenv("REASONING_MODEL", resolved_model_name),
+            api_key=resolved_hf_token,
             env_base_url=os.getenv("ENV_BASE_URL"),
             local_image_name=(
                 os.getenv("LOCAL_IMAGE_NAME")
