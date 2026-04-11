@@ -143,58 +143,53 @@ async def run_task(
 
 async def run_inference(settings: InferenceSettings, run_all_tasks: bool = False) -> int:
     task_names = settings.task_names if run_all_tasks else (settings.task_name,)
-
-    env: Optional[SupportOpsEnv] = None
     llm_client: Optional[OpenAI] = None
 
     try:
-        try:
-            llm_client = _build_llm_client(settings)
+        llm_client = _build_llm_client(settings)
+    except Exception as exc:
+        print(f"[ERROR] Execution failed: {exc}", file=sys.stderr, flush=True)
+        for task_name in task_names:
+            log_start(task=task_name, env=settings.benchmark, model=settings.model_name)
+            log_end(success=False, steps=0, score=0.01, rewards=[])
+        return 1
 
+    all_success = True
+
+    for task_name in task_names:
+        success = False
+        steps = 0
+        score = 0.01
+        rewards: List[float] = []
+        env: Optional[SupportOpsEnv] = None
+
+        log_start(task=task_name, env=settings.benchmark, model=settings.model_name)
+
+        try:
             if settings.env_base_url:
                 env = SupportOpsEnv(base_url=settings.env_base_url)
                 await env.connect()
             else:
                 env = await SupportOpsEnv.from_docker_image(settings.local_image_name)
+
+            task_settings = settings.with_overrides(task_name=task_name)
+            success, steps, score, rewards = await run_task(env, task_settings, llm_client)
         except Exception as exc:
             print(f"[ERROR] Execution failed: {exc}", file=sys.stderr, flush=True)
-            for task_name in task_names:
-                log_start(task=task_name, env=settings.benchmark, model=settings.model_name)
-                log_end(success=False, steps=0, score=0.01, rewards=[])
-            return 1
+            all_success = False
+        else:
+            all_success = all_success and success
+        finally:
+            if env is not None:
+                try:
+                    await env.close()
+                except Exception as close_exc:
+                    print(
+                        f"[WARN] Failed to close environment cleanly: {close_exc}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+            # Emit END after env.close to satisfy strict output-order contract.
+            log_end(success=success, steps=steps, score=score, rewards=rewards)
 
-        all_success = True
-
-        for task_name in task_names:
-            success = False
-            steps = 0
-            score = 0.01
-            rewards: List[float] = []
-
-            log_start(task=task_name, env=settings.benchmark, model=settings.model_name)
-
-            try:
-                task_settings = settings.with_overrides(task_name=task_name)
-                success, steps, score, rewards = await run_task(env, task_settings, llm_client)
-            except Exception as exc:
-                print(f"[ERROR] Execution failed: {exc}", file=sys.stderr, flush=True)
-                all_success = False
-            else:
-                all_success = all_success and success
-            finally:
-                log_end(success=success, steps=steps, score=score, rewards=rewards)
-
-        return 0 if all_success else 1
-    except Exception as exc:
-        print(f"[ERROR] Execution failed: {exc}", file=sys.stderr, flush=True)
-        return 1
-    finally:
-        if env is not None:
-            try:
-                await env.close()
-            except Exception as close_exc:
-                print(
-                    f"[WARN] Failed to close environment cleanly: {close_exc}",
-                    file=sys.stderr,
-                    flush=True,
-                )
+    return 0 if all_success else 1
