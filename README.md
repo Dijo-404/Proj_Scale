@@ -62,7 +62,6 @@ flowchart LR
 ├── inference_strategies.py
 ├── models.py
 ├── openenv.yaml
-├── preval_script.sh
 ├── pyproject.toml
 ├── requirements.txt
 ├── README.md
@@ -77,11 +76,9 @@ flowchart LR
 │   ├── test_graders.py
 │   └── test_inference_output.py
 ├── server/
-│   ├── Dockerfile
 │   ├── __init__.py
 │   ├── __main__.py
 │   ├── app.py
-│   ├── requirements.txt
 │   └── support_ops_environment.py
 └── uv.lock
 ```
@@ -360,12 +357,6 @@ Build image:
 
 ```bash
 docker build -t proj_scale-env:latest .
-```
-
-Alternative (explicit server Dockerfile):
-
-```bash
-docker build -f server/Dockerfile -t proj_scale-env:latest .
 ```
 
 Run container:

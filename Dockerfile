@@ -10,7 +10,7 @@ ENV UV_PROJECT_ENVIRONMENT=/app/env/.venv
 COPY pyproject.toml uv.lock README.md openenv.yaml requirements.txt ./
 COPY __init__.py client.py models.py tasks.py graders.py ./
 COPY inference.py inference_config.py inference_prompts.py inference_runner.py inference_strategies.py ./
-COPY scenario_config.json ./
+COPY config ./config
 COPY server ./server
 
 RUN --mount=type=cache,target=/root/.cache/uv \

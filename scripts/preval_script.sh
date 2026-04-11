@@ -182,13 +182,9 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 DOCKER_CONTEXT="$REPO_DIR"
-DOCKERFILE_FLAG=()
-if [ ! -f "$REPO_DIR/Dockerfile" ] && [ -f "$REPO_DIR/server/Dockerfile" ]; then
-  DOCKERFILE_FLAG=(-f "$REPO_DIR/server/Dockerfile")
-fi
 
 BUILD_OK=false
-BUILD_OUTPUT=$(run_with_timeout "$DOCKER_BUILD_TIMEOUT" docker build "${DOCKERFILE_FLAG[@]}" "$DOCKER_CONTEXT" 2>&1) && BUILD_OK=true
+BUILD_OUTPUT=$(run_with_timeout "$DOCKER_BUILD_TIMEOUT" docker build "$DOCKER_CONTEXT" 2>&1) && BUILD_OK=true
 
 if [ "$BUILD_OK" = true ]; then
   pass "Docker build succeeded"

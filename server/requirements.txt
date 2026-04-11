@@ -1,5 +1,0 @@
-# Convenience file for lightweight server-only pip installs.
-# Canonical dependency definitions live in pyproject.toml.
-openenv-core[core]>=0.2.2
-fastapi>=0.115.0
-uvicorn>=0.24.0
