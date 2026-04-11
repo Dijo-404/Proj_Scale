@@ -49,7 +49,8 @@ flowchart LR
 .
 ├── __init__.py
 ├── client.py
-├── scenario_config.json
+├── config/
+│   └── scenario_config.json
 ├── docs/
 │   └── guide.md
 ├── Dockerfile
@@ -65,13 +66,16 @@ flowchart LR
 ├── pyproject.toml
 ├── requirements.txt
 ├── README.md
+├── scripts/
+│   └── preval_script.sh
 ├── tasks.py
 ├── tests/
 │   ├── conftest.py
 │   ├── test_api.py
 │   ├── test_api_lifecycle.py
 │   ├── test_environment.py
-│   └── test_graders.py
+│   ├── test_graders.py
+│   └── test_inference_output.py
 ├── server/
 │   ├── Dockerfile
 │   ├── __init__.py
@@ -384,15 +388,15 @@ Hugging Face Space notes:
 
 ## 14) Pre-Submission Checklist Mapping
 
-- HF Space responds to reset: Implemented via `preval_script.sh` Step 1 (`/reset` must return HTTP 200).
-- OpenEnv spec compliance: Implemented via `preval_script.sh` Step 3 (`openenv validate`).
-- Docker builds: Implemented via `preval_script.sh` Step 4 (Docker build with timeout).
-- Baseline reproduces: Implemented via `preval_script.sh` Step 5 (`inference.py` run under timeout).
-- Structured START/STEP/END logs: Implemented via `preval_script.sh` Step 5 (strict stdout contract including score).
-- 3+ tasks with graders: Implemented via `preval_script.sh` Step 6 (task count + grader execution).
-- Task total scores strictly in (0,1): Implemented via `preval_script.sh` Step 6 (strict interval check).
-- Runtime under 20 min: Implemented via `preval_script.sh` (`INFERENCE_TIMEOUT=1200`).
-- Mandatory env vars present: Implemented via `preval_script.sh` Step 2 (`API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`).
+- HF Space responds to reset: Implemented via `scripts/preval_script.sh` Step 1 (`/reset` must return HTTP 200).
+- OpenEnv spec compliance: Implemented via `scripts/preval_script.sh` Step 3 (`openenv validate`).
+- Docker builds: Implemented via `scripts/preval_script.sh` Step 4 (Docker build with timeout).
+- Baseline reproduces: Implemented via `scripts/preval_script.sh` Step 5 (`inference.py` run under timeout).
+- Structured START/STEP/END logs: Implemented via `scripts/preval_script.sh` Step 5 (strict stdout contract including score).
+- 3+ tasks with graders: Implemented via `scripts/preval_script.sh` Step 6 (task count + grader execution).
+- Task total scores strictly in (0,1): Implemented via `scripts/preval_script.sh` Step 6 (strict interval check).
+- Runtime under 20 min: Implemented via `scripts/preval_script.sh` (`INFERENCE_TIMEOUT=1200`).
+- Mandatory env vars present: Implemented via `scripts/preval_script.sh` Step 2 (`API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`).
 - Automated tests pass: Covered by `pytest -q tests`.
 
 ## 15) Prevalidation Helper
@@ -403,7 +407,7 @@ Run included script:
 export API_BASE_URL="https://router.huggingface.co/v1"
 export MODEL_NAME="Qwen/Qwen2.5-72B-Instruct"
 export HF_TOKEN="<your-hf-token>"
-bash preval_script.sh https://<your-space>.hf.space .
+bash scripts/preval_script.sh https://<your-space>.hf.space .
 ```
 
 The validator executes seven gated checks and stops on first failure with remediation hints.

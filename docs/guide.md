@@ -23,7 +23,7 @@ This guide is intended for:
 ## 2. Repository Structure and Responsibilities
 
 - `models.py`: Typed action, observation, reward, and state models used by server and client.
-- `scenario_config.json`: External scenario/task configuration used to define benchmark tasks.
+- `config/scenario_config.json`: External scenario/task configuration used to define benchmark tasks.
 - `tasks.py`: Typed task loader/parsers that build `TaskSpec` objects from JSON config.
 - `graders.py`: Deterministic scoring logic for routing, communication, and process quality.
 - `server/support_ops_environment.py`: Core environment state machine and reward shaping.
@@ -36,7 +36,7 @@ This guide is intended for:
 - `inference_runner.py`: Async loop for reset/step execution and result logging.
 - `openenv.yaml`: OpenEnv environment descriptor (entrypoint, runtime, metadata).
 - `Dockerfile`: Container build and runtime configuration.
-- `preval_script.sh`: Pre-submission validator for Space ping, Docker build, and openenv validate.
+- `scripts/preval_script.sh`: Pre-submission validator for Space ping, Docker build, and openenv validate.
 - `docs/guide.md`: Detailed architecture, workflow, and operations guide.
 - `tests/`: Pytest suite for API, environment behavior, and grader correctness.
 
@@ -381,7 +381,7 @@ flowchart LR
 Run validator script:
 
 ```bash
-bash preval_script.sh https://<your-space>.hf.space .
+bash scripts/preval_script.sh https://<your-space>.hf.space .
 ```
 
 ---

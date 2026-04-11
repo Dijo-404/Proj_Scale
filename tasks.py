@@ -9,10 +9,13 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Literal, Optional, Tuple
+from typing import Dict, Literal, Optional, Tuple, cast
 
 Difficulty = Literal["easy", "medium", "hard"]
 CustomerTier = Literal["standard", "business", "enterprise"]
+
+VALID_DIFFICULTIES = {"easy", "medium", "hard"}
+VALID_CUSTOMER_TIERS = {"standard", "business", "enterprise"}
 
 
 @dataclass(frozen=True)
@@ -61,7 +64,13 @@ def _config_path() -> Path:
     configured = os.getenv("PROJ_SCALE_SCENARIO_CONFIG")
     if configured:
         return Path(configured).expanduser().resolve()
-    return (Path(__file__).resolve().parent / "scenario_config.json").resolve()
+
+    repo_root = Path(__file__).resolve().parent
+    preferred = repo_root / "config" / "scenario_config.json"
+    legacy = repo_root / "scenario_config.json"
+    if preferred.exists():
+        return preferred.resolve()
+    return legacy.resolve()
 
 
 def _load_raw_config(config_path: Path) -> Dict:
@@ -86,10 +95,14 @@ def _parse_reply_rule(raw: Dict) -> ReplyRule:
 
 
 def _parse_ticket_seed(raw: Dict) -> TicketSeed:
+    customer_tier = str(raw["customer_tier"])
+    if customer_tier not in VALID_CUSTOMER_TIERS:
+        raise ValueError(f"Invalid customer_tier: {customer_tier}")
+
     return TicketSeed(
         ticket_id=str(raw["ticket_id"]),
         subject=str(raw["subject"]),
-        customer_tier=str(raw["customer_tier"]),
+        customer_tier=cast(CustomerTier, customer_tier),
         sla_hours=int(raw["sla_hours"]),
     )
 
@@ -113,6 +126,10 @@ def _parse_process_rule(raw: Dict) -> ProcessRule:
 
 
 def _parse_task(raw: Dict) -> TaskSpec:
+    difficulty = str(raw["difficulty"])
+    if difficulty not in VALID_DIFFICULTIES:
+        raise ValueError(f"Invalid difficulty: {difficulty}")
+
     tickets = tuple(_parse_ticket_seed(item) for item in raw.get("tickets", []))
     goals = {
         str(ticket_id): _parse_ticket_goal(goal)
@@ -121,7 +138,7 @@ def _parse_task(raw: Dict) -> TaskSpec:
 
     return TaskSpec(
         name=str(raw["name"]),
-        difficulty=str(raw["difficulty"]),
+        difficulty=cast(Difficulty, difficulty),
         description=str(raw["description"]),
         max_steps=int(raw["max_steps"]),
         tickets=tickets,
