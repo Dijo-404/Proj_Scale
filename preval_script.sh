@@ -240,7 +240,11 @@ if any(not line.startswith(allowed_prefixes) for line in lines):
 
 start_re = re.compile(r"^\[START\] task=\S+ env=\S+ model=\S+$")
 step_re = re.compile(r"^\[STEP\] step=(\d+) action=(.+) reward=(\d+\.\d{2}) done=(true|false) error=(.*)$")
-end_re = re.compile(r"^\[END\] success=(true|false) steps=(\d+) rewards=(\d+\.\d{2}(,\d+\.\d{2})*)?$")
+end_re = re.compile(
+    r"^\[END\] success=(true|false) steps=(?P<steps>\d+) "
+    r"score=(?P<score>(?:0(?:\.\d+)?|1(?:\.0+)?)) "
+    r"rewards=(?P<rewards>\d+\.\d{2}(,\d+\.\d{2})*)?$"
+)
 
 if sum(1 for line in lines if line.startswith("[START]")) != 1:
     raise SystemExit("expected exactly one [START] line")
@@ -267,9 +271,13 @@ end_m = end_re.match(lines[-1])
 if not end_m:
     raise SystemExit("[END] line format invalid")
 
-declared_steps = int(end_m.group(2))
-rewards_blob = end_m.group(3) or ""
+declared_steps = int(end_m.group("steps"))
+declared_score = float(end_m.group("score"))
+rewards_blob = end_m.group("rewards") or ""
 declared_rewards = [] if rewards_blob == "" else rewards_blob.split(",")
+
+if not (0.0 <= declared_score <= 1.0):
+    raise SystemExit("[END] score must be in [0,1]")
 
 if declared_steps != len(step_lines):
     raise SystemExit("[END] steps does not match number of [STEP] lines")
@@ -287,7 +295,7 @@ fi
 
 pass "inference baseline run completed under timeout and output format is compliant"
 
-log "${BOLD}Step 6/7: 3+ tasks with graders and score ranges${NC} ..."
+log "${BOLD}Step 6/7: 3+ tasks with graders and strict total score range${NC} ..."
 
 if ! "$PYTHON_BIN" - "$REPO_DIR" <<'PY'
 import sys
@@ -315,10 +323,14 @@ for task_name in TASK_ORDER:
         for seed in task.tickets
     }
     result = grade_for_task(task_name, tickets=tickets, action_history=[])
-    for key in ("routing", "communication", "process", "total"):
+    for key in ("routing", "communication", "process"):
         value = float(result[key])
         if not (0.0 <= value <= 1.0):
             raise SystemExit(f"{task_name}: {key} out of range [0,1]: {value}")
+
+    total = float(result["total"])
+    if not (0.0 < total < 1.0):
+        raise SystemExit(f"{task_name}: total must be strictly inside (0,1): {total}")
 
 print("ok")
 PY
@@ -327,7 +339,7 @@ then
   stop_at "Step 6"
 fi
 
-pass "task count and grader score ranges validated"
+pass "task count and strict grader total range validated"
 
 log "${BOLD}Step 7/7: Infrastructure/runtime constraints sanity${NC} ..."
 pass "validator enforces inference runtime timeout <= 20 minutes"

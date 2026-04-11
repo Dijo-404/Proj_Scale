@@ -22,25 +22,23 @@ This guide is intended for:
 
 ## 2. Repository Structure and Responsibilities
 
-| Path                                | Responsibility                                                                 |
-| ----------------------------------- | ------------------------------------------------------------------------------ |
-| `models.py`                         | Typed action, observation, reward, and state models used by server and client. |
-| `scenario_config.json`              | External scenario/task configuration used to define benchmark tasks.            |
-| `tasks.py`                          | Typed task loader/parsers that build `TaskSpec` objects from JSON config.      |
-| `graders.py`                        | Deterministic scoring logic for routing, communication, and process quality.   |
-| `server/support_ops_environment.py` | Core environment state machine and reward shaping.                             |
-| `server/app.py`                     | FastAPI app wiring OpenEnv server plus safe task introspection endpoints.      |
-| `client.py`                         | Typed OpenEnv client used by inference or external agents.                     |
-| `inference.py`                      | Thin CLI entrypoint for benchmark inference runs.                              |
-| `inference_config.py`               | Runtime/env configuration and CLI override handling.                           |
-| `inference_prompts.py`              | Prompt definitions for planning and per-step action generation.                |
-| `inference_strategies.py`           | Rule-based + LLM action strategy orchestration and validation.                 |
-| `inference_runner.py`               | Async loop for reset/step execution and result logging.                        |
-| `openenv.yaml`                      | OpenEnv environment descriptor (entrypoint, runtime, metadata).                |
-| `Dockerfile`                        | Container build and runtime configuration.                                     |
-| `preval_script.sh`                  | Pre-submission validator for Space ping, Docker build, and openenv validate.   |
-| `docs/guide.md`                     | Detailed architecture, workflow, and operations guide.                         |
-| `tests/`                            | Pytest suite for API, environment behavior, and grader correctness.            |
+- `models.py`: Typed action, observation, reward, and state models used by server and client.
+- `scenario_config.json`: External scenario/task configuration used to define benchmark tasks.
+- `tasks.py`: Typed task loader/parsers that build `TaskSpec` objects from JSON config.
+- `graders.py`: Deterministic scoring logic for routing, communication, and process quality.
+- `server/support_ops_environment.py`: Core environment state machine and reward shaping.
+- `server/app.py`: FastAPI app wiring OpenEnv server plus safe task introspection endpoints.
+- `client.py`: Typed OpenEnv client used by inference or external agents.
+- `inference.py`: Thin CLI entrypoint for benchmark inference runs.
+- `inference_config.py`: Runtime/env configuration and CLI override handling.
+- `inference_prompts.py`: Prompt definitions for planning and per-step action generation.
+- `inference_strategies.py`: Rule-based + LLM action strategy orchestration and validation.
+- `inference_runner.py`: Async loop for reset/step execution and result logging.
+- `openenv.yaml`: OpenEnv environment descriptor (entrypoint, runtime, metadata).
+- `Dockerfile`: Container build and runtime configuration.
+- `preval_script.sh`: Pre-submission validator for Space ping, Docker build, and openenv validate.
+- `docs/guide.md`: Detailed architecture, workflow, and operations guide.
+- `tests/`: Pytest suite for API, environment behavior, and grader correctness.
 
 ---
 
@@ -310,7 +308,11 @@ Every failure gracefully degrades: Tier 3 → Tier 1, Tier 2 → Tier 3 → Tier
 
 ### 9.2 Output protocol
 
-The script prints exactly `[START]`, `[STEP]`, `[END]` per task.
+The script prints exactly `[START]`, `[STEP]`, `[END]` per task with this layout:
+
+- `[START] task=<task_name> env=<benchmark> model=<model_name>`
+- `[STEP] step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>`
+- `[END] success=<true|false> steps=<n> score=<0.00> rewards=<r1,r2,...,rn>`
 
 ---
 

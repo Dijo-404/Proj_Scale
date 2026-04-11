@@ -34,11 +34,11 @@ def test_inference_logs_match_required_format(capsys):
     log_start(task="easy_access_recovery", env="Proj_Scale", model="demo-model")
     log_step(step=1, action="submit", reward=0.0, done=False, error=None)
     log_step(step=2, action="submit", reward=1.0, done=True, error="boom")
-    log_end(success=True, steps=2, rewards=[0.0, 1.0])
+    log_end(success=True, steps=2, score=0.5, rewards=[0.0, 1.0])
 
     out_lines = capsys.readouterr().out.strip().splitlines()
 
     assert out_lines[0] == "[START] task=easy_access_recovery env=Proj_Scale model=demo-model"
     assert out_lines[1] == "[STEP] step=1 action=submit reward=0.00 done=false error=null"
     assert out_lines[2] == "[STEP] step=2 action=submit reward=1.00 done=true error=boom"
-    assert out_lines[3] == "[END] success=true steps=2 rewards=0.00,1.00"
+    assert out_lines[3] == "[END] success=true steps=2 score=0.50 rewards=0.00,1.00"

@@ -291,7 +291,13 @@ Execution strategy:
 
 The default flow no longer contains hardcoded per-ticket answer sheets.
 
-Output protocol remains: `[START]`, `[STEP]`, `[END]`.
+Output protocol remains: `[START]`, `[STEP]`, `[END]` with strict single-line formatting:
+
+- `[START] task=<task_name> env=<benchmark> model=<model_name>`
+- `[STEP] step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>`
+- `[END] success=<true|false> steps=<n> score=<0.00> rewards=<r1,r2,...,rn>`
+
+`reward` and each value in `rewards` are formatted to 2 decimals.
 
 Mandatory environment variables:
 
@@ -300,6 +306,10 @@ Mandatory environment variables:
 | `API_BASE_URL` | LLM API endpoint       |
 | `MODEL_NAME`   | Model identifier       |
 | `HF_TOKEN`     | Hugging Face/API token |
+
+If running without `ENV_BASE_URL` (container mode), define:
+
+- `LOCAL_IMAGE_NAME`: Docker image name used by `from_docker_image`.
 
 Optional environment variables:
 
@@ -374,18 +384,16 @@ Hugging Face Space notes:
 
 ## 14) Pre-Submission Checklist Mapping
 
-| Checklist Item                     | Status      | Evidence                                                                  |
-| ---------------------------------- | ----------- | ------------------------------------------------------------------------- |
-| HF Space responds to reset         | Implemented | `preval_script.sh` Step 1 pings `/reset` and requires HTTP 200            |
-| OpenEnv spec compliance            | Implemented | `preval_script.sh` Step 3 runs `openenv validate`                         |
-| Docker builds                      | Implemented | `preval_script.sh` Step 4 runs Docker build with timeout                   |
-| Baseline reproduces                | Implemented | `preval_script.sh` Step 5 runs `inference.py` end-to-end under timeout     |
-| Structured START/STEP/END logs     | Implemented | `preval_script.sh` Step 5 validates strict stdout contract                 |
-| 3+ tasks with graders              | Implemented | `preval_script.sh` Step 6 validates task count and runs all task graders    |
-| Scores in 0.0-1.0                  | Implemented | `preval_script.sh` Step 6 validates grader metrics are in [0.0, 1.0]       |
-| Runtime under 20 min               | Implemented | `preval_script.sh` enforces inference timeout (`INFERENCE_TIMEOUT=1200`)   |
-| Mandatory env vars present         | Implemented | `preval_script.sh` Step 2 enforces `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN` |
-| Automated tests pass               | Implemented | `pytest -q tests` passes                                                   |
+- HF Space responds to reset: Implemented via `preval_script.sh` Step 1 (`/reset` must return HTTP 200).
+- OpenEnv spec compliance: Implemented via `preval_script.sh` Step 3 (`openenv validate`).
+- Docker builds: Implemented via `preval_script.sh` Step 4 (Docker build with timeout).
+- Baseline reproduces: Implemented via `preval_script.sh` Step 5 (`inference.py` run under timeout).
+- Structured START/STEP/END logs: Implemented via `preval_script.sh` Step 5 (strict stdout contract including score).
+- 3+ tasks with graders: Implemented via `preval_script.sh` Step 6 (task count + grader execution).
+- Task total scores strictly in (0,1): Implemented via `preval_script.sh` Step 6 (strict interval check).
+- Runtime under 20 min: Implemented via `preval_script.sh` (`INFERENCE_TIMEOUT=1200`).
+- Mandatory env vars present: Implemented via `preval_script.sh` Step 2 (`API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`).
+- Automated tests pass: Covered by `pytest -q tests`.
 
 ## 15) Prevalidation Helper
 

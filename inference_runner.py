@@ -41,10 +41,11 @@ def log_step(
     )
 
 
-def log_end(success: bool, steps: int, rewards: List[float]) -> None:
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    score = max(0.0, min(1.0, float(score)))
     rewards_str = ",".join(f"{reward:.2f}" for reward in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
+        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
         flush=True,
     )
 
@@ -74,7 +75,7 @@ async def run_task(
     env: SupportOpsEnv,
     settings: InferenceSettings,
     llm_client: Optional[OpenAI],
-) -> Tuple[bool, int, List[float]]:
+) -> Tuple[bool, int, float, List[float]]:
     rewards: List[float] = []
     steps_taken = 0
     action_history: List[Dict[str, Any]] = []
@@ -134,8 +135,9 @@ async def run_task(
             break
 
     final_score = float(getattr(result.observation, "score", 0.0))
+    final_score = max(0.0, min(1.0, final_score))
     success = final_score >= settings.success_score_threshold
-    return success, steps_taken, rewards
+    return success, steps_taken, final_score, rewards
 
 
 async def run_inference(settings: InferenceSettings) -> int:
@@ -150,6 +152,7 @@ async def run_inference(settings: InferenceSettings) -> int:
 
     success = False
     steps = 0
+    score = 0.0
     rewards: List[float] = []
 
     try:
@@ -161,7 +164,7 @@ async def run_inference(settings: InferenceSettings) -> int:
         else:
             env = await SupportOpsEnv.from_docker_image(settings.local_image_name)
 
-        success, steps, rewards = await run_task(env, settings, llm_client)
+        success, steps, score, rewards = await run_task(env, settings, llm_client)
         return 0 if success else 1
     except Exception as exc:
         print(f"[ERROR] Execution failed: {exc}", file=sys.stderr, flush=True)
@@ -177,4 +180,4 @@ async def run_inference(settings: InferenceSettings) -> int:
                     flush=True,
                 )
 
-        log_end(success=success, steps=steps, rewards=rewards)
+        log_end(success=success, steps=steps, score=score, rewards=rewards)
