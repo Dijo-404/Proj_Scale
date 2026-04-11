@@ -14,7 +14,7 @@ COPY scenario_config.json ./
 COPY server ./server
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+  uv sync --frozen --no-dev --no-install-project
 
 FROM ${BASE_IMAGE} AS runtime
 

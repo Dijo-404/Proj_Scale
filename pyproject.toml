@@ -24,6 +24,9 @@ dev = [
 [project.scripts]
 server = "Proj_Scale.server.app:main"
 
+[tool.uv]
+package = false
+
 [tool.setuptools]
 include-package-data = true
 packages = ["Proj_Scale", "Proj_Scale.server"]
