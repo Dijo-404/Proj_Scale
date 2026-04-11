@@ -33,6 +33,7 @@ def test_tasks_endpoint_lists_all_benchmark_tasks():
         "medium_billing_dispute",
         "hard_incident_swarm",
     }.issubset(names)
+    assert all(task["has_grader"] is True for task in payload["tasks"])
 
 
 def test_task_detail_endpoint_does_not_leak_goal_answers():
@@ -41,6 +42,7 @@ def test_task_detail_endpoint_does_not_leak_goal_answers():
     assert response.status_code == 200
     payload = response.json()
     assert payload["name"] == "easy_access_recovery"
+    assert payload["has_grader"] is True
     assert payload["ticket_count"] == 1
     assert "goals" not in payload
 

@@ -30,9 +30,9 @@ def test_easy_grader_returns_perfect_score_for_perfect_ticket():
 
     result = grade_easy_access_recovery(tickets, action_history)
 
-    assert result["routing"] == pytest.approx(1.0)
-    assert result["communication"] == pytest.approx(1.0)
-    assert result["process"] == pytest.approx(1.0)
+    assert 1.0 - STRICT_SCORE_EPSILON <= result["routing"] < 1.0
+    assert 1.0 - STRICT_SCORE_EPSILON <= result["communication"] < 1.0
+    assert 1.0 - STRICT_SCORE_EPSILON <= result["process"] < 1.0
     assert result["raw_total"] == pytest.approx(1.0)
     assert 1.0 - STRICT_SCORE_EPSILON <= result["total"] < 1.0
 
@@ -50,6 +50,9 @@ def test_easy_grader_clamps_zero_to_strict_open_interval():
 
     result = grade_easy_access_recovery(tickets, action_history=[])
 
+    assert 0.0 < result["routing"] <= STRICT_SCORE_EPSILON
+    assert 0.0 < result["communication"] <= STRICT_SCORE_EPSILON
+    assert 0.0 < result["process"] <= STRICT_SCORE_EPSILON
     assert result["raw_total"] == pytest.approx(0.0)
     assert 0.0 < result["total"] <= STRICT_SCORE_EPSILON
 

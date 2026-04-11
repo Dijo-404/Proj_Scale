@@ -94,14 +94,12 @@ def _grade_task(
 
     raw_total = (0.5 * routing_score) + (0.3 * communication_score) + (0.2 * process_score)
 
-    # Keep component scores truthful for diagnostics while keeping the final
-    # task total strictly inside (0, 1) for OpenEnv validation.
     total = _strict_unit_interval(raw_total)
 
     return {
-        "routing": round(routing_score, 4),
-        "communication": round(communication_score, 4),
-        "process": round(process_score, 4),
+        "routing": round(_strict_unit_interval(routing_score), 4),
+        "communication": round(_strict_unit_interval(communication_score), 4),
+        "process": round(_strict_unit_interval(process_score), 4),
         "raw_total": round(raw_total, 6),
         "total": round(total, 6),
     }

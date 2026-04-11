@@ -63,7 +63,7 @@ class SupportOpsObservation(Observation):
     difficulty: Literal["easy", "medium", "hard"] = "easy"
     task_description: str = ""
     remaining_steps: int = 0
-    score: float = Field(default=0.0, ge=0.0, le=1.0)
+    score: float = Field(default=1e-4, gt=0.0, lt=1.0)
     grader_breakdown: Dict[str, float] = Field(default_factory=dict)
     reward_details: SupportOpsReward = Field(default_factory=SupportOpsReward)
     tickets: List[TicketView] = Field(default_factory=list)
@@ -78,5 +78,5 @@ class SupportOpsState(State):
 
     active_task: str = ""
     selected_ticket: Optional[str] = None
-    score: float = Field(default=0.0, ge=0.0, le=1.0)
+    score: float = Field(default=1e-4, gt=0.0, lt=1.0)
     done: bool = False

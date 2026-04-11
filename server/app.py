@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from openenv.core.env_server.http_server import create_app
 
+from graders import TASK_GRADERS
 from models import SupportOpsAction, SupportOpsObservation
 from tasks import TASK_LIBRARY
 from server.support_ops_environment import SupportOpsEnvironment
@@ -43,6 +44,7 @@ def list_tasks() -> dict:
                 "difficulty": task.difficulty,
                 "description": task.description,
                 "max_steps": task.max_steps,
+                "has_grader": task.name in TASK_GRADERS,
             }
             for task in TASK_LIBRARY.values()
         ]
@@ -66,6 +68,7 @@ def get_task(task_name: str) -> dict:
         "difficulty": task.difficulty,
         "description": task.description,
         "max_steps": task.max_steps,
+        "has_grader": task.name in TASK_GRADERS,
         "tickets": [seed.__dict__ for seed in task.tickets],
         "ticket_count": len(task.tickets),
     }

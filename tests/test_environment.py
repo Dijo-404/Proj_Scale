@@ -6,6 +6,7 @@
 import pytest
 
 from models import SupportOpsAction
+from graders import STRICT_SCORE_EPSILON
 from server.support_ops_environment import SupportOpsEnvironment
 
 
@@ -164,7 +165,7 @@ def test_full_medium_lifecycle_reaches_high_score():
 
     assert observation.done is True
     assert observation.score > 0.95
-    assert observation.grader_breakdown["routing"] == pytest.approx(1.0)
+    assert 1.0 - STRICT_SCORE_EPSILON <= observation.grader_breakdown["routing"] < 1.0
 
 
 def test_step_limit_enforced_without_submit():

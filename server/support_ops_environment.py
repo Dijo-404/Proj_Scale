@@ -12,7 +12,7 @@ from uuid import uuid4
 from openenv.core.env_server.interfaces import Environment
 from openenv.core.env_server.types import EnvironmentMetadata
 
-from graders import grade_for_task
+from graders import STRICT_SCORE_EPSILON, grade_for_task
 from models import (
     SupportOpsAction,
     SupportOpsObservation,
@@ -69,7 +69,7 @@ class SupportOpsEnvironment(Environment):
             step_count=0,
             active_task=self._task.name,
             selected_ticket=None,
-            score=0.0,
+            score=STRICT_SCORE_EPSILON,
             done=False,
         )
         if rotate:
