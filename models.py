@@ -1,5 +1,3 @@
-"""Typed models for the Support Ops OpenEnv environment."""
-
 from __future__ import annotations
 
 from typing import Dict, List, Literal, Optional

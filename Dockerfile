@@ -10,7 +10,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md openenv.yaml ./
-COPY __init__.py client.py models.py tasks.py graders.py ./
+COPY __init__.py client.py models.py tasks.py graders.py inference.py ./
 COPY server ./server
 
 RUN pip install --no-cache-dir --upgrade pip \

@@ -268,11 +268,11 @@ sequenceDiagram
 
 `inference.py` uses a three-tier hybrid decision pipeline:
 
-| Tier | Trigger | Strategy | LLM Calls |
-| ---- | ------- | -------- | --------- |
-| 1 | All ticket IDs in known targets | Deterministic heuristic via `TARGET_FIELDS` | 0 |
-| 2 | Unknown tickets + LLM available | `REASONING_MODEL` plans once, then deterministic execution | 1 per task |
-| 3 | Plan incomplete or failed | Per-step LLM with grading rubric, action validation, and feedback | ~5-15 per task |
+| Tier | Trigger                         | Strategy                                                          | LLM Calls      |
+| ---- | ------------------------------- | ----------------------------------------------------------------- | -------------- |
+| 1    | All ticket IDs in known targets | Deterministic heuristic via `TARGET_FIELDS`                       | 0              |
+| 2    | Unknown tickets + LLM available | `REASONING_MODEL` plans once, then deterministic execution        | 1 per task     |
+| 3    | Plan incomplete or failed       | Per-step LLM with grading rubric, action validation, and feedback | ~5-15 per task |
 
 Modes:
 

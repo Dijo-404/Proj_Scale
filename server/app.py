@@ -1,5 +1,3 @@
-"""FastAPI app for support operations triage environment."""
-
 from __future__ import annotations
 
 from fastapi import HTTPException

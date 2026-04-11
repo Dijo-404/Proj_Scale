@@ -1,5 +1,3 @@
-"""Support-ticket triage environment with deterministic grading."""
-
 from __future__ import annotations
 
 from copy import deepcopy

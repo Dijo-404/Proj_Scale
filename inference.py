@@ -1,12 +1,4 @@
-"""Inference script for Proj_Scale support triage benchmark.
-
-Stdout protocol: [START], [STEP], [END]
-
-Decision tiers:
-  1. Known tickets   → deterministic heuristic
-  2. Unknown tickets → LLM-planned targets, deterministic execution
-  3. Fallback        → per-step LLM with rich prompt + action validation
-"""
+"""Inference runner for Proj_Scale."""
 
 from __future__ import annotations
 
@@ -16,7 +8,6 @@ import os
 import re
 import sys
 import time
-import traceback
 from typing import Any, Dict, List, Optional, Tuple
 
 from openai import OpenAI
@@ -24,16 +15,17 @@ from openai import OpenAI
 from client import SupportOpsEnv
 from models import SupportOpsAction
 
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-REASONING_MODEL = os.environ.get("REASONING_MODEL", MODEL_NAME)
-API_KEY = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+REASONING_MODEL = os.getenv("REASONING_MODEL", MODEL_NAME)
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+if HF_TOKEN is None:
+    raise ValueError("HF_TOKEN environment variable is required")
 
 ENV_BASE_URL = os.getenv("ENV_BASE_URL")
 LOCAL_IMAGE_NAME = (
-    os.getenv("LOCAL_IMAGE_NAME")
-    or os.getenv("IMAGE_NAME")
-    or "proj_scale-env:latest"
+    os.getenv("LOCAL_IMAGE_NAME") or os.getenv("IMAGE_NAME") or "proj_scale-env:latest"
 )
 
 BENCHMARK = os.getenv("BENCHMARK", "Proj_Scale")
@@ -49,8 +41,12 @@ VALID_CATEGORIES = {"access", "billing", "outage", "security", "feature_request"
 VALID_TEAMS = {"tier1", "billing", "sre", "security", "product"}
 VALID_STATUSES = {"new", "in_progress", "resolved", "escalated"}
 VALID_COMMANDS = {
-    "set_priority", "set_category", "assign_team",
-    "set_status", "reply", "submit",
+    "set_priority",
+    "set_category",
+    "assign_team",
+    "set_status",
+    "reply",
+    "submit",
 }
 
 COMMAND_ENUM_MAP: Dict[str, set] = {
@@ -61,12 +57,42 @@ COMMAND_ENUM_MAP: Dict[str, set] = {
 }
 
 TARGET_FIELDS: Dict[str, Dict[str, str]] = {
-    "ACC-1001": {"priority": "high", "category": "access", "team": "tier1", "status": "resolved"},
-    "BILL-2044": {"priority": "critical", "category": "billing", "team": "billing", "status": "escalated"},
-    "BILL-2058": {"priority": "medium", "category": "billing", "team": "billing", "status": "resolved"},
-    "INC-9001": {"priority": "critical", "category": "outage", "team": "sre", "status": "escalated"},
-    "SEC-7712": {"priority": "high", "category": "security", "team": "security", "status": "escalated"},
-    "FEAT-3304": {"priority": "low", "category": "feature_request", "team": "product", "status": "in_progress"},
+    "ACC-1001": {
+        "priority": "high",
+        "category": "access",
+        "team": "tier1",
+        "status": "resolved",
+    },
+    "BILL-2044": {
+        "priority": "critical",
+        "category": "billing",
+        "team": "billing",
+        "status": "escalated",
+    },
+    "BILL-2058": {
+        "priority": "medium",
+        "category": "billing",
+        "team": "billing",
+        "status": "resolved",
+    },
+    "INC-9001": {
+        "priority": "critical",
+        "category": "outage",
+        "team": "sre",
+        "status": "escalated",
+    },
+    "SEC-7712": {
+        "priority": "high",
+        "category": "security",
+        "team": "security",
+        "status": "escalated",
+    },
+    "FEAT-3304": {
+        "priority": "low",
+        "category": "feature_request",
+        "team": "product",
+        "status": "in_progress",
+    },
 }
 
 REPLY_TEMPLATES: Dict[str, str] = {
@@ -210,11 +236,10 @@ def log_step(
     )
 
 
-def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+def log_end(success: bool, steps: int, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} "
-        f"score={score:.3f} rewards={rewards_str}",
+        f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
         flush=True,
     )
 
@@ -292,7 +317,10 @@ def _validate_action(
         message = str(message).strip()
 
     return SupportOpsAction(
-        command=command, ticket_id=ticket_id, value=value, message=message,
+        command=command,
+        ticket_id=ticket_id,
+        value=value,
+        message=message,
     )
 
 
@@ -340,27 +368,32 @@ def _heuristic_action(observation: Any) -> SupportOpsAction:
 
             if ticket.priority != target["priority"]:
                 return SupportOpsAction(
-                    command="set_priority", ticket_id=ticket.ticket_id,
+                    command="set_priority",
+                    ticket_id=ticket.ticket_id,
                     value=target["priority"],
                 )
             if ticket.category != target["category"]:
                 return SupportOpsAction(
-                    command="set_category", ticket_id=ticket.ticket_id,
+                    command="set_category",
+                    ticket_id=ticket.ticket_id,
                     value=target["category"],
                 )
             if ticket.team != target["team"]:
                 return SupportOpsAction(
-                    command="assign_team", ticket_id=ticket.ticket_id,
+                    command="assign_team",
+                    ticket_id=ticket.ticket_id,
                     value=target["team"],
                 )
             if not ticket.last_reply:
                 return SupportOpsAction(
-                    command="reply", ticket_id=ticket.ticket_id,
+                    command="reply",
+                    ticket_id=ticket.ticket_id,
                     message=REPLY_TEMPLATES.get(ticket.ticket_id, DEFAULT_REPLY),
                 )
             if ticket.status != target["status"]:
                 return SupportOpsAction(
-                    command="set_status", ticket_id=ticket.ticket_id,
+                    command="set_status",
+                    ticket_id=ticket.ticket_id,
                     value=target["status"],
                 )
         except Exception:
@@ -395,9 +428,11 @@ def _plan_episode(client: OpenAI, observation: Any) -> Optional[Dict]:
         )
 
         content = _llm_call(
-            client=client, model=REASONING_MODEL,
+            client=client,
+            model=REASONING_MODEL,
             system_prompt=PLANNING_SYSTEM_PROMPT,
-            user_prompt=user_prompt, max_tokens=1024,
+            user_prompt=user_prompt,
+            max_tokens=1024,
         )
         if content is None:
             return None
@@ -416,7 +451,8 @@ def _plan_episode(client: OpenAI, observation: Any) -> Optional[Dict]:
 
 
 def _merge_targets(
-    observation: Any, plan: Optional[Dict],
+    observation: Any,
+    plan: Optional[Dict],
 ) -> Tuple[Dict[str, Dict[str, str]], Dict[str, str], List[str]]:
     targets: Dict[str, Dict[str, str]] = {}
     replies: Dict[str, str] = {}
@@ -448,8 +484,10 @@ def _merge_targets(
                 reply_text = DEFAULT_REPLY
 
             targets[tid] = {
-                "priority": priority, "category": category,
-                "team": team, "status": status_val,
+                "priority": priority,
+                "category": category,
+                "team": team,
+                "status": status_val,
             }
             replies[tid] = reply_text
 
@@ -478,24 +516,33 @@ def _unified_heuristic(
         try:
             if ticket.priority != target["priority"]:
                 return SupportOpsAction(
-                    command="set_priority", ticket_id=tid, value=target["priority"],
+                    command="set_priority",
+                    ticket_id=tid,
+                    value=target["priority"],
                 )
             if ticket.category != target["category"]:
                 return SupportOpsAction(
-                    command="set_category", ticket_id=tid, value=target["category"],
+                    command="set_category",
+                    ticket_id=tid,
+                    value=target["category"],
                 )
             if ticket.team != target["team"]:
                 return SupportOpsAction(
-                    command="assign_team", ticket_id=tid, value=target["team"],
+                    command="assign_team",
+                    ticket_id=tid,
+                    value=target["team"],
                 )
             if not ticket.last_reply:
                 return SupportOpsAction(
-                    command="reply", ticket_id=tid,
+                    command="reply",
+                    ticket_id=tid,
                     message=replies.get(tid, DEFAULT_REPLY),
                 )
             if ticket.status != target["status"]:
                 return SupportOpsAction(
-                    command="set_status", ticket_id=tid, value=target["status"],
+                    command="set_status",
+                    ticket_id=tid,
+                    value=target["status"],
                 )
         except Exception:
             continue
@@ -504,15 +551,21 @@ def _unified_heuristic(
 
 
 def _model_action_per_step(
-    client: OpenAI, observation: Any, action_history: List[Dict],
+    client: OpenAI,
+    observation: Any,
+    action_history: List[Dict],
 ) -> SupportOpsAction:
     try:
         ticket_summaries = [
             {
-                "ticket_id": t.ticket_id, "subject": t.subject,
-                "tier": t.customer_tier, "sla_hours": t.sla_hours,
-                "priority": t.priority, "category": t.category,
-                "team": t.team, "status": t.status,
+                "ticket_id": t.ticket_id,
+                "subject": t.subject,
+                "tier": t.customer_tier,
+                "sla_hours": t.sla_hours,
+                "priority": t.priority,
+                "category": t.category,
+                "team": t.team,
+                "status": t.status,
                 "has_reply": bool(t.last_reply),
             }
             for t in observation.tickets
@@ -533,7 +586,8 @@ def _model_action_per_step(
             user_context["recent_actions"] = action_history[-5:]
 
         content = _llm_call(
-            client=client, model=MODEL_NAME,
+            client=client,
+            model=MODEL_NAME,
             system_prompt=TRIAGE_SYSTEM_PROMPT,
             user_prompt=json.dumps(user_context, ensure_ascii=True),
             max_tokens=300,
@@ -559,18 +613,21 @@ def _choose_action(
     replies: Dict[str, str],
     order: List[str],
     action_history: List[Dict],
-    has_unknown_tickets: bool,
 ) -> SupportOpsAction:
     action = _unified_heuristic(observation, targets, replies, order)
 
     if action.command != "submit":
         return action
 
-    # When heuristic says submit, double-check with LLM if any ticket looks incomplete
     if client is not None:
         try:
             for t in observation.tickets:
-                if t.priority is None or t.category is None or t.team is None or not t.last_reply:
+                if (
+                    t.priority is None
+                    or t.category is None
+                    or t.team is None
+                    or not t.last_reply
+                ):
                     return _model_action_per_step(client, observation, action_history)
         except Exception:
             pass
@@ -580,133 +637,111 @@ def _choose_action(
 
 async def run_task(
     env: SupportOpsEnv, task_name: str, client: Optional[OpenAI]
-) -> float:
+) -> Tuple[bool, int, List[float]]:
     rewards: List[float] = []
     steps_taken = 0
-    score = 0.001
     success = False
     action_history: List[Dict] = []
 
-    log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
-
     try:
-        try:
-            result = await env.reset(task_name=task_name)
-        except Exception as exc:
-            log_step(step=1, action='{"command":"reset"}', reward=0.0,
-                     done=True, error=f"reset failed: {exc}")
-            return 0.001
+        result = await env.reset(task_name=task_name)
+    except Exception:
+        return False, 0, []
 
-        has_unknown = any(
-            t.ticket_id not in TARGET_FIELDS for t in result.observation.tickets
+    plan: Optional[Dict] = None
+    if client is not None:
+        plan = _plan_episode(client, result.observation)
+
+    targets, replies, order = _merge_targets(result.observation, plan)
+
+    for step in range(1, MAX_STEPS + 1):
+        if result.done:
+            break
+
+        action = _choose_action(
+            result.observation,
+            client,
+            targets,
+            replies,
+            order,
+            action_history,
+        )
+        action_str = _action_to_str(action)
+
+        action_history.append(
+            {
+                "step": step,
+                "command": action.command,
+                "ticket_id": action.ticket_id,
+                "value": action.value,
+            }
         )
 
-        plan: Optional[Dict] = None
-        if client is not None:
-            plan = _plan_episode(client, result.observation)
-
-        targets, replies, order = _merge_targets(result.observation, plan)
-
-        for step in range(1, MAX_STEPS + 1):
-            try:
-                if result.done:
-                    break
-
-                action = _choose_action(
-                    result.observation, client, targets, replies,
-                    order, action_history, has_unknown,
-                )
-                action_str = _action_to_str(action)
-
-                action_history.append({
-                    "step": step, "command": action.command,
-                    "ticket_id": action.ticket_id, "value": action.value,
-                })
-
-                try:
-                    result = await env.step(action)
-                except Exception as exc:
-                    log_step(step=step, action=action_str, reward=0.0,
-                             done=True, error=f"step failed: {exc}")
-                    steps_taken = step
-                    break
-
-                reward = float(result.reward or 0.0)
-                rewards.append(reward)
-                steps_taken = step
-
-                log_step(
-                    step=step, action=action_str, reward=reward,
-                    done=bool(result.done),
-                    error=result.observation.last_action_error,
-                )
-
-                if result.done:
-                    break
-
-            except Exception as exc:
-                log_step(step=step, action='{"command":"error"}', reward=0.0,
-                         done=True, error=f"step error: {exc}")
-                steps_taken = step
-                break
-
         try:
-            score = float(result.observation.score)
+            result = await env.step(action)
         except Exception:
-            score = 0.0
-        # Clamp to open interval (0, 1) — validator rejects exactly 0.0 and 1.0
-        score = max(0.001, min(0.999, score))
-        success = score >= SUCCESS_SCORE_THRESHOLD
-        return score
-    finally:
-        log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+            break
+
+        reward = float(result.reward or 0.0)
+        rewards.append(reward)
+        steps_taken = step
+
+        log_step(
+            step=step,
+            action=action_str,
+            reward=reward,
+            done=bool(result.done),
+            error=result.observation.last_action_error,
+        )
+
+        if result.done:
+            break
+
+    try:
+        score = float(result.observation.score)
+    except Exception:
+        score = 0.0
+
+    score = max(0.001, min(0.999, score))
+    success = score >= SUCCESS_SCORE_THRESHOLD
+    return success, steps_taken, rewards
 
 
 async def main() -> None:
-    use_model = bool(API_KEY) and (not FORCE_HEURISTIC)
+    use_model = not FORCE_HEURISTIC
+    task_name = os.getenv("TASK_NAME", TASKS[0])
+    if task_name not in TASKS:
+        task_name = TASKS[0]
 
     try:
-        client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY) if use_model else None
+        client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN) if use_model else None
     except Exception:
         client = None
 
     env: Optional[SupportOpsEnv] = None
+    success = False
+    steps = 0
+    rewards: List[float] = []
+
+    log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
 
     try:
         if ENV_BASE_URL:
             env = SupportOpsEnv(base_url=ENV_BASE_URL)
             await env.connect()
         else:
-            try:
-                env = await SupportOpsEnv.from_docker_image(LOCAL_IMAGE_NAME)
-            except Exception as exc:
-                print(f"[ERROR] Container start failed: {exc}",
-                      file=sys.stderr, flush=True)
-                for task in TASKS:
-                    log_start(task=task, env=BENCHMARK, model=MODEL_NAME)
-                    log_end(success=False, steps=0, score=0.001, rewards=[])
-                return
-    except Exception as exc:
-        print(f"[ERROR] Environment connection failed: {exc}",
-              file=sys.stderr, flush=True)
-        for task in TASKS:
-            log_start(task=task, env=BENCHMARK, model=MODEL_NAME)
-            log_end(success=False, steps=0, score=0.001, rewards=[])
-        return
+            env = await SupportOpsEnv.from_docker_image(LOCAL_IMAGE_NAME)
 
-    try:
-        for task in TASKS:
-            try:
-                await run_task(env, task, client)
-            except Exception as exc:
-                print(f"[ERROR] Task {task} failed: {exc}",
-                      file=sys.stderr, flush=True)
-                traceback.print_exc(file=sys.stderr)
+        success, steps, rewards = await run_task(env, task_name, client)
+    except Exception as exc:
+        print(f"[ERROR] Execution failed: {exc}", file=sys.stderr, flush=True)
     finally:
         try:
-            await env.close()
+            if env is not None:
+                await env.close()
         except Exception:
             pass
+        log_end(success=success, steps=steps, rewards=rewards)
 
 
 if __name__ == "__main__":

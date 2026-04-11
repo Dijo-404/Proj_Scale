@@ -1,5 +1,3 @@
-"""Deterministic graders for easy/medium/hard support triage tasks."""
-
 from __future__ import annotations
 
 from typing import Dict, List

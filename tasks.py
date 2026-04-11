@@ -1,5 +1,3 @@
-"""Task definitions for support-ticket triage benchmark."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass

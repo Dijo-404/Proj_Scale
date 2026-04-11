@@ -263,11 +263,11 @@ Expected payload:
 
 The inference script uses a three-tier hybrid architecture:
 
-| Tier | Trigger | Strategy | LLM Calls |
-| ---- | ------- | -------- | --------- |
-| 1 | All ticket IDs in known targets | Deterministic heuristic | 0 |
-| 2 | Unknown tickets + LLM available | Reasoning model plans once, then deterministic execution | 1 per task |
-| 3 | Plan incomplete or failed | Per-step LLM with rich prompt, validation, and feedback | ~5-15 per task |
+| Tier | Trigger                         | Strategy                                                 | LLM Calls      |
+| ---- | ------------------------------- | -------------------------------------------------------- | -------------- |
+| 1    | All ticket IDs in known targets | Deterministic heuristic                                  | 0              |
+| 2    | Unknown tickets + LLM available | Reasoning model plans once, then deterministic execution | 1 per task     |
+| 3    | Plan incomplete or failed       | Per-step LLM with rich prompt, validation, and feedback  | ~5-15 per task |
 
 Known tickets always use hardcoded targets (guaranteed perfect score). Unknown tickets are planned by an LLM and then executed deterministically. Every failure gracefully degrades to a safer tier.
 
@@ -283,13 +283,13 @@ Mandatory environment variables:
 
 Optional environment variables:
 
-| Variable           | Purpose                                      |
-| ------------------ | -------------------------------------------- |
-| `ENV_BASE_URL`     | Connect to already running environment       |
-| `LOCAL_IMAGE_NAME` | Docker image for local container-mode client |
-| `FORCE_HEURISTIC`  | Force deterministic no-LLM baseline          |
+| Variable           | Purpose                                                       |
+| ------------------ | ------------------------------------------------------------- |
+| `ENV_BASE_URL`     | Connect to already running environment                        |
+| `LOCAL_IMAGE_NAME` | Docker image for local container-mode client                  |
+| `FORCE_HEURISTIC`  | Force deterministic no-LLM baseline                           |
 | `REASONING_MODEL`  | Separate model for Tier 2 planning (defaults to `MODEL_NAME`) |
-| `LLM_MAX_RETRIES`  | Retry count with exponential backoff (default `2`) |
+| `LLM_MAX_RETRIES`  | Retry count with exponential backoff (default `2`)            |
 
 Run deterministic baseline against local server:
 
