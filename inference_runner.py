@@ -42,10 +42,11 @@ def log_step(
 
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
-    score = max(0.0, min(1.0, float(score)))
+    # Task validation expects score strictly within (0, 1) after formatting.
+    display_score = max(0.01, min(0.99, float(score)))
     rewards_str = ",".join(f"{reward:.2f}" for reward in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
+        f"[END] success={str(success).lower()} steps={steps} score={display_score:.2f} rewards={rewards_str}",
         flush=True,
     )
 
@@ -140,32 +141,50 @@ async def run_task(
     return success, steps_taken, final_score, rewards
 
 
-async def run_inference(settings: InferenceSettings) -> int:
-    log_start(
-        task=settings.task_name,
-        env=settings.benchmark,
-        model=settings.model_name,
-    )
+async def run_inference(settings: InferenceSettings, run_all_tasks: bool = False) -> int:
+    task_names = settings.task_names if run_all_tasks else (settings.task_name,)
 
     env: Optional[SupportOpsEnv] = None
     llm_client: Optional[OpenAI] = None
 
-    success = False
-    steps = 0
-    score = 0.0
-    rewards: List[float] = []
-
     try:
-        llm_client = _build_llm_client(settings)
+        try:
+            llm_client = _build_llm_client(settings)
 
-        if settings.env_base_url:
-            env = SupportOpsEnv(base_url=settings.env_base_url)
-            await env.connect()
-        else:
-            env = await SupportOpsEnv.from_docker_image(settings.local_image_name)
+            if settings.env_base_url:
+                env = SupportOpsEnv(base_url=settings.env_base_url)
+                await env.connect()
+            else:
+                env = await SupportOpsEnv.from_docker_image(settings.local_image_name)
+        except Exception as exc:
+            print(f"[ERROR] Execution failed: {exc}", file=sys.stderr, flush=True)
+            for task_name in task_names:
+                log_start(task=task_name, env=settings.benchmark, model=settings.model_name)
+                log_end(success=False, steps=0, score=0.01, rewards=[])
+            return 1
 
-        success, steps, score, rewards = await run_task(env, settings, llm_client)
-        return 0 if success else 1
+        all_success = True
+
+        for task_name in task_names:
+            success = False
+            steps = 0
+            score = 0.01
+            rewards: List[float] = []
+
+            log_start(task=task_name, env=settings.benchmark, model=settings.model_name)
+
+            try:
+                task_settings = settings.with_overrides(task_name=task_name)
+                success, steps, score, rewards = await run_task(env, task_settings, llm_client)
+            except Exception as exc:
+                print(f"[ERROR] Execution failed: {exc}", file=sys.stderr, flush=True)
+                all_success = False
+            else:
+                all_success = all_success and success
+            finally:
+                log_end(success=success, steps=steps, score=score, rewards=rewards)
+
+        return 0 if all_success else 1
     except Exception as exc:
         print(f"[ERROR] Execution failed: {exc}", file=sys.stderr, flush=True)
         return 1
@@ -179,5 +198,3 @@ async def run_inference(settings: InferenceSettings) -> int:
                     file=sys.stderr,
                     flush=True,
                 )
-
-        log_end(success=success, steps=steps, score=score, rewards=rewards)

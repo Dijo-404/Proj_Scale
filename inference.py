@@ -99,7 +99,9 @@ async def _async_main() -> int:
         return 0
 
     settings = _resolve_settings(base_settings, args)
-    return await run_inference(settings)
+    # If no explicit task is requested, run the full benchmark task set.
+    explicit_task = args.task is not None or bool(os.getenv("TASK_NAME"))
+    return await run_inference(settings, run_all_tasks=not explicit_task)
 
 
 def main() -> int:
