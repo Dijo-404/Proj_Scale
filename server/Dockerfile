@@ -4,7 +4,6 @@ ARG BUILD_MODE=standalone
 FROM ${BASE_IMAGE} AS builder
 
 WORKDIR /app/env
-
 ENV UV_PROJECT_ENVIRONMENT=/app/env/.venv
 
 COPY pyproject.toml uv.lock README.md openenv.yaml requirements.txt ./
@@ -22,7 +21,6 @@ ARG BUILD_MODE=standalone
 ENV BUILD_MODE=${BUILD_MODE}
 
 WORKDIR /app/env
-
 COPY --from=builder /app/env /app/env
 
 ENV PATH=/app/env/.venv/bin:${PATH}

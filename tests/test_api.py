@@ -30,6 +30,16 @@ def test_tasks_endpoint_lists_all_benchmark_tasks():
     }.issubset(names)
 
 
+def test_task_detail_endpoint_does_not_leak_goal_answers():
+    response = client.get("/tasks/easy_access_recovery")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["name"] == "easy_access_recovery"
+    assert payload["ticket_count"] == 1
+    assert "goals" not in payload
+
+
 def test_unknown_task_detail_returns_not_found():
     response = client.get("/tasks/does_not_exist")
 

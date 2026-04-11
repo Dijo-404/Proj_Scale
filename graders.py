@@ -1,11 +1,16 @@
+# Copyright (c) 2026 Proj_Scale contributors.
+# SPDX-License-Identifier: MIT
+
+"""Deterministic grading logic for Proj_Scale tasks."""
+
 from __future__ import annotations
 
 from typing import Dict, List
 
-try:
-    from .tasks import TASK_LIBRARY, TaskSpec
-except ImportError:
-    from tasks import TASK_LIBRARY, TaskSpec
+from tasks import TASK_LIBRARY, TaskSpec
+
+
+STRICT_SCORE_EPSILON = 1e-6
 
 
 def _normalize(text: str) -> str:
@@ -25,7 +30,8 @@ def _keyword_coverage(reply: str, keywords: tuple[str, ...]) -> float:
 
 
 def _strict_unit_interval(value: float) -> float:
-    return max(0.001, min(0.999, value))
+    # OpenEnv task validation expects totals strictly inside (0, 1).
+    return max(STRICT_SCORE_EPSILON, min(1.0 - STRICT_SCORE_EPSILON, value))
 
 
 def _grade_process(
@@ -86,14 +92,15 @@ def _grade_task(
     communication_score = communication_total / ticket_count
     process_score = _grade_process(task, tickets, action_history)
 
-    total = (0.5 * routing_score) + (0.3 * communication_score) + (0.2 * process_score)
-    total = _strict_unit_interval(total)
+    raw_total = (0.5 * routing_score) + (0.3 * communication_score) + (0.2 * process_score)
+    total = _strict_unit_interval(raw_total)
 
     return {
         "routing": round(routing_score, 4),
         "communication": round(communication_score, 4),
         "process": round(process_score, 4),
-        "total": round(total, 4),
+        "raw_total": round(raw_total, 6),
+        "total": round(total, 6),
     }
 
 

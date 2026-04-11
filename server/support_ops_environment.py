@@ -1,3 +1,8 @@
+# Copyright (c) 2026 Proj_Scale contributors.
+# SPDX-License-Identifier: MIT
+
+"""Core environment state machine for the Proj_Scale support-ops benchmark."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -7,26 +12,15 @@ from uuid import uuid4
 from openenv.core.env_server.interfaces import Environment
 from openenv.core.env_server.types import EnvironmentMetadata
 
-try:
-    from ..graders import grade_for_task
-    from ..models import (
-        SupportOpsAction,
-        SupportOpsObservation,
-        SupportOpsReward,
-        SupportOpsState,
-        TicketView,
-    )
-    from ..tasks import TASK_ORDER, TASK_LIBRARY, TaskSpec, get_task
-except ImportError:
-    from graders import grade_for_task
-    from models import (
-        SupportOpsAction,
-        SupportOpsObservation,
-        SupportOpsReward,
-        SupportOpsState,
-        TicketView,
-    )
-    from tasks import TASK_ORDER, TASK_LIBRARY, TaskSpec, get_task
+from graders import grade_for_task
+from models import (
+    SupportOpsAction,
+    SupportOpsObservation,
+    SupportOpsReward,
+    SupportOpsState,
+    TicketView,
+)
+from tasks import TASK_ORDER, TASK_LIBRARY, TaskSpec, get_task
 
 
 class SupportOpsEnvironment(Environment):
@@ -275,13 +269,11 @@ class SupportOpsEnvironment(Environment):
         self._state.selected_ticket = self._selected_ticket
 
         return SupportOpsObservation(
-            benchmark="Proj_Scale",
             task_name=self._task.name,
             difficulty=self._task.difficulty,
             task_description=self._task.description,
             remaining_steps=max(0, self._task.max_steps - self._state.step_count),
             score=score,
-            progress=score,
             grader_breakdown=breakdown,
             reward_details=SupportOpsReward(
                 total=reward,
@@ -291,7 +283,6 @@ class SupportOpsEnvironment(Environment):
             ),
             tickets=self._ticket_views(),
             current_ticket=self._selected_ticket,
-            available_tasks=list(TASK_ORDER),
             action_hints=list(self._task.action_hints),
             last_action_summary=summary,
             last_action_error=error,

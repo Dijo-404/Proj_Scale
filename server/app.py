@@ -1,17 +1,17 @@
+# Copyright (c) 2026 Proj_Scale contributors.
+# SPDX-License-Identifier: MIT
+
+"""FastAPI application entrypoint for the Proj_Scale OpenEnv server."""
+
 from __future__ import annotations
 
 from fastapi import HTTPException
 
 from openenv.core.env_server.http_server import create_app
 
-try:
-    from ..models import SupportOpsAction, SupportOpsObservation
-    from ..tasks import TASK_LIBRARY
-    from .support_ops_environment import SupportOpsEnvironment
-except ImportError:
-    from models import SupportOpsAction, SupportOpsObservation
-    from tasks import TASK_LIBRARY
-    from server.support_ops_environment import SupportOpsEnvironment
+from models import SupportOpsAction, SupportOpsObservation
+from tasks import TASK_LIBRARY
+from server.support_ops_environment import SupportOpsEnvironment
 
 
 app = create_app(
@@ -51,7 +51,12 @@ def list_tasks() -> dict:
 
 @app.get("/tasks/{task_name}", tags=["Environment Info"])
 def get_task(task_name: str) -> dict:
-    """Return details for a specific task, including target outcomes."""
+    """Return safe task details for a specific task.
+
+    This endpoint intentionally excludes exact grading targets to avoid leaking
+    an answer sheet through the API.
+    """
+
     task = TASK_LIBRARY.get(task_name)
     if task is None:
         raise HTTPException(status_code=404, detail=f"Unknown task: {task_name}")
@@ -62,16 +67,7 @@ def get_task(task_name: str) -> dict:
         "description": task.description,
         "max_steps": task.max_steps,
         "tickets": [seed.__dict__ for seed in task.tickets],
-        "goals": {
-            ticket_id: {
-                "priority": goal.priority,
-                "category": goal.category,
-                "team": goal.team,
-                "status": goal.status,
-                "reply_keywords": list(goal.reply_rule.required_keywords),
-            }
-            for ticket_id, goal in task.goals.items()
-        },
+        "ticket_count": len(task.tickets),
     }
 
 

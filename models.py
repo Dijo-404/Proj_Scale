@@ -1,3 +1,8 @@
+# Copyright (c) 2026 Proj_Scale contributors.
+# SPDX-License-Identifier: MIT
+
+"""Typed data models for the Proj_Scale OpenEnv benchmark."""
+
 from __future__ import annotations
 
 from typing import Dict, List, Literal, Optional
@@ -54,18 +59,15 @@ class SupportOpsAction(Action):
 class SupportOpsObservation(Observation):
     """Observation model returned on reset and step."""
 
-    benchmark: str = "Proj_Scale"
     task_name: str = ""
     difficulty: Literal["easy", "medium", "hard"] = "easy"
     task_description: str = ""
     remaining_steps: int = 0
     score: float = Field(default=0.0, ge=0.0, le=1.0)
-    progress: float = Field(default=0.0, ge=0.0, le=1.0)
     grader_breakdown: Dict[str, float] = Field(default_factory=dict)
     reward_details: SupportOpsReward = Field(default_factory=SupportOpsReward)
     tickets: List[TicketView] = Field(default_factory=list)
     current_ticket: Optional[str] = None
-    available_tasks: List[str] = Field(default_factory=list)
     action_hints: List[str] = Field(default_factory=list)
     last_action_summary: str = ""
     last_action_error: Optional[str] = None

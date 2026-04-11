@@ -25,12 +25,17 @@ This guide is intended for:
 | Path                                | Responsibility                                                                 |
 | ----------------------------------- | ------------------------------------------------------------------------------ |
 | `models.py`                         | Typed action, observation, reward, and state models used by server and client. |
-| `tasks.py`                          | Deterministic task library (easy, medium, hard) and target outcomes.           |
+| `scenario_config.json`              | External scenario/task configuration used to define benchmark tasks.            |
+| `tasks.py`                          | Typed task loader/parsers that build `TaskSpec` objects from JSON config.      |
 | `graders.py`                        | Deterministic scoring logic for routing, communication, and process quality.   |
 | `server/support_ops_environment.py` | Core environment state machine and reward shaping.                             |
-| `server/app.py`                     | FastAPI app wiring OpenEnv server plus task introspection endpoints.           |
+| `server/app.py`                     | FastAPI app wiring OpenEnv server plus safe task introspection endpoints.      |
 | `client.py`                         | Typed OpenEnv client used by inference or external agents.                     |
-| `inference.py`                      | Baseline runner with heuristic or model-driven action generation.              |
+| `inference.py`                      | Thin CLI entrypoint for benchmark inference runs.                              |
+| `inference_config.py`               | Runtime/env configuration and CLI override handling.                           |
+| `inference_prompts.py`              | Prompt definitions for planning and per-step action generation.                |
+| `inference_strategies.py`           | Rule-based + LLM action strategy orchestration and validation.                 |
+| `inference_runner.py`               | Async loop for reset/step execution and result logging.                        |
 | `openenv.yaml`                      | OpenEnv environment descriptor (entrypoint, runtime, metadata).                |
 | `Dockerfile`                        | Container build and runtime configuration.                                     |
 | `preval_script.sh`                  | Pre-submission validator for Space ping, Docker build, and openenv validate.   |
@@ -84,8 +89,8 @@ Important fields for policy logic:
 
 - `task_name`, `difficulty`, `task_description`
 - `remaining_steps`
-- `score` and `progress`
-- `grader_breakdown` (`routing`, `communication`, `process`, `total`)
+- `score`
+- `grader_breakdown` (`routing`, `communication`, `process`, `raw_total`, `total`)
 - `reward_details` (`total`, `progress_delta`, `step_penalty`, `invalid_action_penalty`)
 - `tickets[]` with status and triage fields
 - `action_hints`
@@ -220,6 +225,8 @@ Terminal shaping:
   - `GET /`
   - `GET /tasks`
   - `GET /tasks/{task_name}`
+
+`GET /tasks/{task_name}` intentionally omits exact grading goals to avoid exposing benchmark answer keys through the API.
 
 Root endpoint expected payload:
 

@@ -1,9 +1,18 @@
+# Copyright (c) 2026 Proj_Scale contributors.
+# SPDX-License-Identifier: MIT
+
+"""Task specification loading for Proj_Scale benchmark scenarios."""
+
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Literal, Optional, Tuple
 
 Difficulty = Literal["easy", "medium", "hard"]
+CustomerTier = Literal["standard", "business", "enterprise"]
 
 
 @dataclass(frozen=True)
@@ -16,7 +25,7 @@ class ReplyRule:
 class TicketSeed:
     ticket_id: str
     subject: str
-    customer_tier: Literal["standard", "business", "enterprise"]
+    customer_tier: CustomerTier
     sla_hours: int
 
 
@@ -48,203 +57,97 @@ class TaskSpec:
     action_hints: Tuple[str, ...]
 
 
-def _build_task_library() -> Dict[str, TaskSpec]:
-    return {
-        "easy_access_recovery": TaskSpec(
-            name="easy_access_recovery",
-            difficulty="easy",
-            description=(
-                "A business customer is locked out after changing their phone. "
-                "Classify, route, reply with concrete recovery steps, and close the ticket."
-            ),
-            max_steps=8,
-            tickets=(
-                TicketSeed(
-                    ticket_id="ACC-1001",
-                    subject="Payroll dashboard login blocked after MFA reset",
-                    customer_tier="business",
-                    sla_hours=8,
-                ),
-            ),
-            goals={
-                "ACC-1001": TicketGoal(
-                    priority="high",
-                    category="access",
-                    team="tier1",
-                    status="resolved",
-                    reply_rule=ReplyRule(
-                        required_keywords=(
-                            "verify",
-                            "mfa",
-                            "reset",
-                            "15 minutes",
-                        ),
-                        min_length=70,
-                    ),
-                ),
-            },
-            process_rule=ProcessRule(
-                first_action_ticket="ACC-1001", must_resolve=("ACC-1001",)
-            ),
-            action_hints=(
-                "Set priority/category/team before submitting.",
-                "Write a practical customer reply that includes concrete next steps.",
-                "Mark status as resolved only after a complete reply.",
-            ),
-        ),
-        "medium_billing_dispute": TaskSpec(
-            name="medium_billing_dispute",
-            difficulty="medium",
-            description=(
-                "Handle two billing tickets: a critical enterprise double-charge dispute and "
-                "a routine invoice request. Prioritize correctly and route both tickets."
-            ),
-            max_steps=12,
-            tickets=(
-                TicketSeed(
-                    ticket_id="BILL-2044",
-                    subject="Enterprise account billed twice, refund failed",
-                    customer_tier="enterprise",
-                    sla_hours=2,
-                ),
-                TicketSeed(
-                    ticket_id="BILL-2058",
-                    subject="Need April invoice PDF for finance audit",
-                    customer_tier="business",
-                    sla_hours=24,
-                ),
-            ),
-            goals={
-                "BILL-2044": TicketGoal(
-                    priority="critical",
-                    category="billing",
-                    team="billing",
-                    status="escalated",
-                    reply_rule=ReplyRule(
-                        required_keywords=(
-                            "apolog",
-                            "refund",
-                            "invoice",
-                            "48 hours",
-                        ),
-                        min_length=100,
-                    ),
-                ),
-                "BILL-2058": TicketGoal(
-                    priority="medium",
-                    category="billing",
-                    team="billing",
-                    status="resolved",
-                    reply_rule=ReplyRule(
-                        required_keywords=(
-                            "invoice",
-                            "pdf",
-                            "attached",
-                        ),
-                        min_length=60,
-                    ),
-                ),
-            },
-            process_rule=ProcessRule(
-                first_action_ticket="BILL-2044",
-                must_escalate=("BILL-2044",),
-                must_resolve=("BILL-2058",),
-            ),
-            action_hints=(
-                "Prioritize the double-charge dispute first.",
-                "Critical enterprise billing issues should be escalated, not auto-closed.",
-                "Provide explicit timelines in customer communication.",
-            ),
-        ),
-        "hard_incident_swarm": TaskSpec(
-            name="hard_incident_swarm",
-            difficulty="hard",
-            description=(
-                "Coordinate triage for outage, security, and feature tickets during a support surge. "
-                "Protect SLA-critical work first while still handling lower-priority requests."
-            ),
-            max_steps=16,
-            tickets=(
-                TicketSeed(
-                    ticket_id="INC-9001",
-                    subject="EU API 500 errors impacting checkout flow",
-                    customer_tier="enterprise",
-                    sla_hours=1,
-                ),
-                TicketSeed(
-                    ticket_id="SEC-7712",
-                    subject="Suspicious OAuth app connected to admin account",
-                    customer_tier="enterprise",
-                    sla_hours=2,
-                ),
-                TicketSeed(
-                    ticket_id="FEAT-3304",
-                    subject="Request: dark-mode CSV export",
-                    customer_tier="standard",
-                    sla_hours=72,
-                ),
-            ),
-            goals={
-                "INC-9001": TicketGoal(
-                    priority="critical",
-                    category="outage",
-                    team="sre",
-                    status="escalated",
-                    reply_rule=ReplyRule(
-                        required_keywords=(
-                            "incident",
-                            "mitigation",
-                            "30 minutes",
-                            "status page",
-                        ),
-                        min_length=110,
-                    ),
-                ),
-                "SEC-7712": TicketGoal(
-                    priority="high",
-                    category="security",
-                    team="security",
-                    status="escalated",
-                    reply_rule=ReplyRule(
-                        required_keywords=(
-                            "revoke",
-                            "tokens",
-                            "security",
-                            "investigation",
-                        ),
-                        min_length=100,
-                    ),
-                ),
-                "FEAT-3304": TicketGoal(
-                    priority="low",
-                    category="feature_request",
-                    team="product",
-                    status="in_progress",
-                    reply_rule=ReplyRule(
-                        required_keywords=(
-                            "roadmap",
-                            "feature request",
-                            "tracking",
-                        ),
-                        min_length=75,
-                    ),
-                ),
-            },
-            process_rule=ProcessRule(
-                first_action_ticket="INC-9001",
-                must_escalate=("INC-9001", "SEC-7712"),
-            ),
-            action_hints=(
-                "Address the outage first, then security, then feature work.",
-                "Escalate outage and security incidents with explicit follow-up timelines.",
-                "Do not mark feature requests resolved in the same incident-response episode.",
-            ),
-        ),
+def _config_path() -> Path:
+    configured = os.getenv("PROJ_SCALE_SCENARIO_CONFIG")
+    if configured:
+        return Path(configured).expanduser().resolve()
+    return (Path(__file__).resolve().parent / "scenario_config.json").resolve()
+
+
+def _load_raw_config(config_path: Path) -> Dict:
+    if not config_path.exists():
+        raise FileNotFoundError(f"scenario config not found: {config_path}")
+
+    with config_path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+
+    if not isinstance(payload, dict):
+        raise ValueError("scenario config must be a JSON object")
+    if not isinstance(payload.get("tasks"), list):
+        raise ValueError("scenario config must include a 'tasks' list")
+
+    return payload
+
+
+def _parse_reply_rule(raw: Dict) -> ReplyRule:
+    keywords = tuple(str(value).strip().lower() for value in raw.get("required_keywords", []))
+    min_length = int(raw.get("min_length", 80))
+    return ReplyRule(required_keywords=keywords, min_length=min_length)
+
+
+def _parse_ticket_seed(raw: Dict) -> TicketSeed:
+    return TicketSeed(
+        ticket_id=str(raw["ticket_id"]),
+        subject=str(raw["subject"]),
+        customer_tier=str(raw["customer_tier"]),
+        sla_hours=int(raw["sla_hours"]),
+    )
+
+
+def _parse_ticket_goal(raw: Dict) -> TicketGoal:
+    return TicketGoal(
+        priority=str(raw["priority"]),
+        category=str(raw["category"]),
+        team=str(raw["team"]),
+        status=str(raw["status"]),
+        reply_rule=_parse_reply_rule(raw.get("reply_rule", {})),
+    )
+
+
+def _parse_process_rule(raw: Dict) -> ProcessRule:
+    return ProcessRule(
+        first_action_ticket=raw.get("first_action_ticket"),
+        must_escalate=tuple(str(value) for value in raw.get("must_escalate", [])),
+        must_resolve=tuple(str(value) for value in raw.get("must_resolve", [])),
+    )
+
+
+def _parse_task(raw: Dict) -> TaskSpec:
+    tickets = tuple(_parse_ticket_seed(item) for item in raw.get("tickets", []))
+    goals = {
+        str(ticket_id): _parse_ticket_goal(goal)
+        for ticket_id, goal in raw.get("goals", {}).items()
     }
 
+    return TaskSpec(
+        name=str(raw["name"]),
+        difficulty=str(raw["difficulty"]),
+        description=str(raw["description"]),
+        max_steps=int(raw["max_steps"]),
+        tickets=tickets,
+        goals=goals,
+        process_rule=_parse_process_rule(raw.get("process_rule", {})),
+        action_hints=tuple(str(value) for value in raw.get("action_hints", [])),
+    )
 
-TASK_LIBRARY = _build_task_library()
-TASK_ORDER = tuple(TASK_LIBRARY.keys())
+
+def _build_task_library(config_payload: Dict) -> Tuple[Dict[str, TaskSpec], Tuple[str, ...]]:
+    specs = [_parse_task(raw_task) for raw_task in config_payload["tasks"]]
+    library = {spec.name: spec for spec in specs}
+
+    task_order = tuple(str(name) for name in config_payload.get("task_order", []))
+    if task_order:
+        invalid = [name for name in task_order if name not in library]
+        if invalid:
+            raise ValueError(f"task_order references unknown tasks: {invalid}")
+    else:
+        task_order = tuple(library.keys())
+
+    return library, task_order
+
+
+_CONFIG = _load_raw_config(_config_path())
+TASK_LIBRARY, TASK_ORDER = _build_task_library(_CONFIG)
 
 
 def get_task(task_name: str) -> TaskSpec:

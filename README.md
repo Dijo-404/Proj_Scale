@@ -49,27 +49,37 @@ flowchart LR
 .
 ├── __init__.py
 ├── client.py
+├── scenario_config.json
 ├── docs/
 │   └── guide.md
 ├── Dockerfile
 ├── graders.py
 ├── inference.py
+├── inference_config.py
+├── inference_prompts.py
+├── inference_runner.py
+├── inference_strategies.py
 ├── models.py
 ├── openenv.yaml
 ├── preval_script.sh
 ├── pyproject.toml
+├── requirements.txt
 ├── README.md
 ├── tasks.py
 ├── tests/
 │   ├── conftest.py
 │   ├── test_api.py
+│   ├── test_api_lifecycle.py
 │   ├── test_environment.py
 │   └── test_graders.py
-└── server
-    ├── __init__.py
-    ├── app.py
-    ├── requirements.txt
-    └── support_ops_environment.py
+├── server/
+│   ├── Dockerfile
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── app.py
+│   ├── requirements.txt
+│   └── support_ops_environment.py
+└── uv.lock
 ```
 
 ## 4) OpenEnv Interface Compliance
@@ -122,7 +132,7 @@ Key fields:
 - `task_name`, `difficulty`, `task_description`
 - `remaining_steps`
 - `score` in `[0.0, 1.0]`
-- `grader_breakdown` with `routing`, `communication`, `process`, `total`
+- `grader_breakdown` with `routing`, `communication`, `process`, `raw_total`, `total`
 - `reward_details` with `total`, `progress_delta`, `step_penalty`, `invalid_action_penalty`
 - `tickets[]` (typed `TicketView`)
 - `action_hints`, `last_action_summary`, `last_action_error`
@@ -237,6 +247,8 @@ Useful endpoints:
 - `GET /tasks`
 - `GET /tasks/{task_name}`
 
+`/tasks/{task_name}` intentionally excludes exact grading targets to avoid answer leakage.
+
 Quick smoke test:
 
 ```bash
@@ -261,17 +273,25 @@ Expected payload:
 
 ## 12) Inference (`inference.py`)
 
-The inference script uses a three-tier hybrid architecture:
+Inference is now split into focused modules:
 
-| Tier | Trigger                         | Strategy                                                 | LLM Calls      |
-| ---- | ------------------------------- | -------------------------------------------------------- | -------------- |
-| 1    | All ticket IDs in known targets | Deterministic heuristic                                  | 0              |
-| 2    | Unknown tickets + LLM available | Reasoning model plans once, then deterministic execution | 1 per task     |
-| 3    | Plan incomplete or failed       | Per-step LLM with rich prompt, validation, and feedback  | ~5-15 per task |
+- `inference_config.py`: runtime/env configuration
+- `inference_prompts.py`: LLM planning + action prompts
+- `inference_strategies.py`: baseline and model action-selection logic
+- `inference_runner.py`: async run orchestration
+- `inference.py`: thin CLI entrypoint
 
-Known tickets always use hardcoded targets (guaranteed perfect score). Unknown tickets are planned by an LLM and then executed deterministically. Every failure gracefully degrades to a safer tier.
+Execution strategy:
 
-Output protocol: `[START]`, `[STEP]`, `[END]`.
+| Mode | Trigger | Strategy | LLM Calls |
+| ---- | ------- | -------- | --------- |
+| Baseline | `FORCE_HEURISTIC=1` or `--force-heuristic` | Rule-based triage from observed ticket content | 0 |
+| Default | LLM enabled | Initial planning call + deterministic plan execution | ~1 per task |
+| Recovery | Planning/validation gaps | Per-step LLM fallback with strict action validation | bounded by `MAX_STEPS` |
+
+The default flow no longer contains hardcoded per-ticket answer sheets.
+
+Output protocol remains: `[START]`, `[STEP]`, `[END]`.
 
 Mandatory environment variables:
 
@@ -291,18 +311,33 @@ Optional environment variables:
 | `REASONING_MODEL`  | Separate model for Tier 2 planning (defaults to `MODEL_NAME`) |
 | `LLM_MAX_RETRIES`  | Retry count with exponential backoff (default `2`)            |
 
+CLI flags are also available:
+
+```bash
+.venv/bin/python inference.py --list-tasks
+.venv/bin/python inference.py --task hard_incident_swarm --env-base-url http://127.0.0.1:8000
+.venv/bin/python inference.py --task medium_billing_dispute --model Qwen/Qwen2.5-72B-Instruct
+```
+
 Run deterministic baseline against local server:
 
 ```bash
 FORCE_HEURISTIC=1 ENV_BASE_URL=http://127.0.0.1:8000 .venv/bin/python inference.py
 ```
 
-Deterministic scores:
+Baseline mode is deterministic, but scores depend on task content rather than hardcoded ticket IDs.
 
-```text
-easy_access_recovery: score=1.000
-medium_billing_dispute: score=1.000
-hard_incident_swarm: score=1.000
+Quick typed client usage:
+
+```python
+from client import SupportOpsEnv
+
+# HTTP / WebSocket capable usage
+async with SupportOpsEnv(base_url="http://127.0.0.1:8000") as env:
+  result = await env.reset(task_name="easy_access_recovery")
+
+# One-liner local container startup
+env = await SupportOpsEnv.from_docker_image("proj_scale-env:latest")
 ```
 
 ## 13) Docker and Hugging Face Space Deployment
@@ -311,6 +346,12 @@ Build image:
 
 ```bash
 docker build -t proj_scale-env:latest .
+```
+
+Alternative (explicit server Dockerfile):
+
+```bash
+docker build -f server/Dockerfile -t proj_scale-env:latest .
 ```
 
 Run container:
