@@ -374,24 +374,31 @@ Hugging Face Space notes:
 
 ## 14) Pre-Submission Checklist Mapping
 
-| Checklist Item                     | Status      | Evidence                                                         |
-| ---------------------------------- | ----------- | ---------------------------------------------------------------- |
-| HF Space responds to reset         | Implemented | Endpoint contract and local `/reset` smoke test verified         |
-| OpenEnv spec compliance            | Implemented | `openenv validate` passes                                        |
-| Docker builds                      | Implemented | `docker build -t proj_scale-env:latest .` succeeds               |
-| Baseline reproduces                | Implemented | Three-tier inference reproduces identical scores                 |
-| 3+ tasks with graders              | Implemented | easy/medium/hard tasks in `tasks.py` and graders in `graders.py` |
-| Scores in 0.0-1.0                  | Implemented | Grader clamps and typed observation constraints enforce range    |
-| Reward has partial progress signal | Implemented | delta-score shaped reward with penalties and terminal shaping    |
-| Automated tests pass               | Implemented | `pytest -q tests` passes                                         |
+| Checklist Item                     | Status      | Evidence                                                                  |
+| ---------------------------------- | ----------- | ------------------------------------------------------------------------- |
+| HF Space responds to reset         | Implemented | `preval_script.sh` Step 1 pings `/reset` and requires HTTP 200            |
+| OpenEnv spec compliance            | Implemented | `preval_script.sh` Step 3 runs `openenv validate`                         |
+| Docker builds                      | Implemented | `preval_script.sh` Step 4 runs Docker build with timeout                   |
+| Baseline reproduces                | Implemented | `preval_script.sh` Step 5 runs `inference.py` end-to-end under timeout     |
+| Structured START/STEP/END logs     | Implemented | `preval_script.sh` Step 5 validates strict stdout contract                 |
+| 3+ tasks with graders              | Implemented | `preval_script.sh` Step 6 validates task count and runs all task graders    |
+| Scores in 0.0-1.0                  | Implemented | `preval_script.sh` Step 6 validates grader metrics are in [0.0, 1.0]       |
+| Runtime under 20 min               | Implemented | `preval_script.sh` enforces inference timeout (`INFERENCE_TIMEOUT=1200`)   |
+| Mandatory env vars present         | Implemented | `preval_script.sh` Step 2 enforces `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN` |
+| Automated tests pass               | Implemented | `pytest -q tests` passes                                                   |
 
 ## 15) Prevalidation Helper
 
 Run included script:
 
 ```bash
+export API_BASE_URL="https://router.huggingface.co/v1"
+export MODEL_NAME="Qwen/Qwen2.5-72B-Instruct"
+export HF_TOKEN="<your-hf-token>"
 bash preval_script.sh https://<your-space>.hf.space .
 ```
+
+The validator executes seven gated checks and stops on first failure with remediation hints.
 
 ## 16) Running Tests
 

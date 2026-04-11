@@ -88,17 +88,14 @@ def _grade_task(
         length_score = min(len(reply) / float(goal.reply_rule.min_length), 1.0)
         communication_total += (0.8 * coverage) + (0.2 * length_score)
 
-    routing_score = routing_total / ticket_count
-    communication_score = communication_total / ticket_count
-    process_score = _grade_process(task, tickets, action_history)
+    routing_score = max(0.0, min(1.0, routing_total / ticket_count))
+    communication_score = max(0.0, min(1.0, communication_total / ticket_count))
+    process_score = max(0.0, min(1.0, _grade_process(task, tickets, action_history)))
 
     raw_total = (0.5 * routing_score) + (0.3 * communication_score) + (0.2 * process_score)
 
-    # Clamp all scores to open interval (0, 1) — the evaluator rejects
-    # exact 0.0 and 1.0 values.
-    routing_score = _strict_unit_interval(routing_score)
-    communication_score = _strict_unit_interval(communication_score)
-    process_score = _strict_unit_interval(process_score)
+    # Keep component scores truthful for diagnostics while keeping the final
+    # task total strictly inside (0, 1) for OpenEnv validation.
     total = _strict_unit_interval(raw_total)
 
     return {

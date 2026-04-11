@@ -1,3 +1,8 @@
+# Copyright (c) 2026 Proj_Scale contributors.
+# SPDX-License-Identifier: MIT
+
+"""Inference environment and output-format compliance tests."""
+
 import pytest
 
 from inference import _read_required_env

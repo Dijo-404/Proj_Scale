@@ -1,3 +1,8 @@
+# Copyright (c) 2026 Proj_Scale contributors.
+# SPDX-License-Identifier: MIT
+
+"""Direct environment state-machine behavior tests."""
+
 import pytest
 
 from models import SupportOpsAction

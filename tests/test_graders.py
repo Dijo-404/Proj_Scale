@@ -1,3 +1,8 @@
+# Copyright (c) 2026 Proj_Scale contributors.
+# SPDX-License-Identifier: MIT
+
+"""Deterministic grader unit tests."""
+
 import pytest
 
 from graders import (

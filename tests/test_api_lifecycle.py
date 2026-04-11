@@ -1,3 +1,8 @@
+# Copyright (c) 2026 Proj_Scale contributors.
+# SPDX-License-Identifier: MIT
+
+"""End-to-end API lifecycle tests for reset/step/state flows."""
+
 from fastapi.testclient import TestClient
 
 from server.app import app

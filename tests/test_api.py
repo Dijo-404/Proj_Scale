@@ -1,3 +1,8 @@
+# Copyright (c) 2026 Proj_Scale contributors.
+# SPDX-License-Identifier: MIT
+
+"""API endpoint tests for the Proj_Scale FastAPI app."""
+
 from fastapi.testclient import TestClient
 
 from server.app import app
