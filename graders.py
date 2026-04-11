@@ -24,6 +24,10 @@ def _keyword_coverage(reply: str, keywords: tuple[str, ...]) -> float:
     return hits / float(len(keywords))
 
 
+def _strict_unit_interval(value: float) -> float:
+    return max(0.001, min(0.999, value))
+
+
 def _grade_process(
     task: TaskSpec, tickets: Dict[str, Dict], action_history: List[Dict]
 ) -> float:
@@ -83,7 +87,7 @@ def _grade_task(
     process_score = _grade_process(task, tickets, action_history)
 
     total = (0.5 * routing_score) + (0.3 * communication_score) + (0.2 * process_score)
-    total = max(0.0, min(1.0, total))
+    total = _strict_unit_interval(total)
 
     return {
         "routing": round(routing_score, 4),
