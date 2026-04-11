@@ -273,40 +273,45 @@ sequenceDiagram
 
 ## 9. Inference Architecture
 
-`inference.py` uses a three-tier hybrid decision pipeline:
+`inference.py` uses a plan-first hybrid pipeline:
 
-| Tier | Trigger                         | Strategy                                                          | LLM Calls      |
-| ---- | ------------------------------- | ----------------------------------------------------------------- | -------------- |
-| 1    | All ticket IDs in known targets | Deterministic heuristic via `TARGET_FIELDS`                       | 0              |
-| 2    | Unknown tickets + LLM available | `REASONING_MODEL` plans once, then deterministic execution        | 1 per task     |
-| 3    | Plan incomplete or failed       | Per-step LLM with grading rubric, action validation, and feedback | ~5-15 per task |
+| Phase | Trigger | Strategy | LLM Calls |
+| ----- | ------- | -------- | --------- |
+| Baseline planning | Always | Build deterministic ticket targets from observed subject/tier/SLA | 0 |
+| Episode planning | LLM enabled | One planning call via `REASONING_MODEL` from initial observation | ~1 per task |
+| Plan merge + execution | Always | Normalize merged targets, then execute deterministic next actions | 0 |
+| Recovery step | Planned action is `submit` but tickets remain incomplete and LLM is enabled | Per-step model action with strict validation, fallback to deterministic action | bounded by remaining steps |
 
 Modes:
 
-- Heuristic mode (`FORCE_HEURISTIC=1` or no API key) — Tier 1 only.
-- Model mode (OpenAI-compatible client with `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`) — all tiers.
+- Heuristic mode (`FORCE_HEURISTIC=1`) executes deterministic planning and actions only.
+- Model mode (OpenAI-compatible client with `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`) uses planning and optional recovery.
+- If LLM planning output is invalid/unavailable, execution safely falls back to deterministic behavior.
 
 ### 9.1 Decision pipeline
 
 ```mermaid
 flowchart TD
     A[Start task] --> B[Call reset]
-    B --> C{All tickets known?}
-    C -- Yes --> D[Tier 1: Deterministic heuristic]
-    C -- No --> E{LLM available?}
-    E -- No --> D
-    E -- Yes --> F[Tier 2: Reasoning model plans once]
-    F --> G[Merge known + planned targets]
-    G --> H[Execute plan deterministically]
-    H --> I{All tickets covered?}
-    I -- Yes --> J[Submit]
-    I -- No --> K[Tier 3: Per-step LLM with validation]
-    K --> J
-    D --> J
-    J --> L[Print END summary]
+    B --> C[Build deterministic baseline plan]
+    C --> D{LLM enabled?}
+    D -- Yes --> E[Generate one episode plan]
+    D -- No --> F[Use baseline plan]
+    E --> G[Merge baseline and LLM targets]
+    F --> G
+    G --> H[Execute deterministic next action]
+    H --> I{Next action is submit?}
+    I -- No --> H
+    I -- Yes --> J{Any ticket still incomplete?}
+    J -- No --> K[Submit]
+    J -- Yes --> L{LLM enabled?}
+    L -- No --> K
+    L -- Yes --> M[Per-step model recovery action]
+    M --> H
+    K --> N[Print END summary]
 ```
 
-Every failure gracefully degrades: Tier 3 → Tier 1, Tier 2 → Tier 3 → Tier 1.
+The runner keeps output contract order strict by emitting `END` only after environment close.
 
 ### 9.2 Output protocol
 
@@ -340,7 +345,8 @@ At startup, the app validates scenario configuration and fails fast with a clear
 ### 10.3 Run baseline in local-server mode
 
 ```bash
-FORCE_HEURISTIC=1 ENV_BASE_URL=http://127.0.0.1:8000 .venv/bin/python inference.py
+API_BASE_URL=http://127.0.0.1:8000 MODEL_NAME=gpt-5-mini HF_TOKEN=dummy FORCE_HEURISTIC=1 \
+    .venv/bin/python inference.py --env-base-url http://127.0.0.1:8000 --task easy_access_recovery
 ```
 
 ### 10.4 Run baseline in container mode
@@ -396,20 +402,22 @@ bash scripts/preval_script.sh https://<your-space>.hf.space .
 
 ### 12.1 Add a new task
 
-1. Add a `TaskSpec` in `tasks.py` with:
+1. Add a new task entry in `config/scenario_config.json` with:
    - Ticket seeds
    - Goals for each ticket
    - Process rules
    - Action hints
-2. Ensure task name is included in `TASK_LIBRARY` ordering.
+2. Add task name to `task_order` in `config/scenario_config.json`.
 3. Confirm difficulty and `max_steps` are realistic.
+4. Validate config loading diagnostics via startup or:
+    - `python -c "from tasks import validate_scenario_config; print(validate_scenario_config())"`
 
 ### 12.2 Add grader support
 
 1. Register a grader function in `graders.py`.
 2. Add it to `TASK_GRADERS` mapping.
 3. Ensure `grade_for_task` can resolve the new task.
-4. Keep score output bounded in `[0.0, 1.0]`.
+4. Keep score output in strict open interval `(0.0, 1.0)`.
 
 ### 12.3 Keep environment behavior deterministic
 

@@ -132,7 +132,7 @@ Key fields:
 
 - `task_name`, `difficulty`, `task_description`
 - `remaining_steps`
-- `score` in `[0.0, 1.0]`
+- `score` in strict open interval `(0.0, 1.0)`
 - `grader_breakdown` with `routing`, `communication`, `process`, `raw_total`, `total`
 - `reward_details` with `total`, `progress_delta`, `step_penalty`, `invalid_action_penalty`
 - `tickets[]` (typed `TicketView`)
@@ -160,7 +160,7 @@ Graders:
 - `grade_medium_billing_dispute`
 - `grade_hard_incident_swarm`
 
-Each grader returns values in `[0.0, 1.0]` for:
+Each grader returns values in strict open interval `(0.0, 1.0)` for:
 
 - `routing`
 - `communication`
@@ -337,7 +337,8 @@ CLI flags are also available:
 Run deterministic baseline against local server:
 
 ```bash
-FORCE_HEURISTIC=1 ENV_BASE_URL=http://127.0.0.1:8000 .venv/bin/python inference.py
+API_BASE_URL=http://127.0.0.1:8000 MODEL_NAME=gpt-5-mini HF_TOKEN=dummy FORCE_HEURISTIC=1 \
+  .venv/bin/python inference.py --env-base-url http://127.0.0.1:8000 --task easy_access_recovery
 ```
 
 Baseline mode is deterministic, but scores depend on task content rather than hardcoded ticket IDs.
