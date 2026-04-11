@@ -10,7 +10,7 @@ from typing import Dict, List
 from tasks import TASK_LIBRARY, TaskSpec
 
 
-STRICT_SCORE_EPSILON = 1e-6
+STRICT_SCORE_EPSILON = 1e-4
 
 
 def _normalize(text: str) -> str:
@@ -93,6 +93,12 @@ def _grade_task(
     process_score = _grade_process(task, tickets, action_history)
 
     raw_total = (0.5 * routing_score) + (0.3 * communication_score) + (0.2 * process_score)
+
+    # Clamp all scores to open interval (0, 1) — the evaluator rejects
+    # exact 0.0 and 1.0 values.
+    routing_score = _strict_unit_interval(routing_score)
+    communication_score = _strict_unit_interval(communication_score)
+    process_score = _strict_unit_interval(process_score)
     total = _strict_unit_interval(raw_total)
 
     return {

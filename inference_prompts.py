@@ -15,7 +15,9 @@ CLASSIFICATION RULES:
 - Feature requests / enhancements / product feedback -> category: feature_request, team: product
 
 PRIORITY BY SLA AND SEVERITY:
-- SLA <= 2 hours OR enterprise with critical issue -> priority: critical
+- SLA <= 1 hour -> priority: critical
+- SLA <= 2 hours AND enterprise billing dispute -> priority: critical
+- SLA <= 2 hours (other categories) -> priority: high
 - SLA <= 8 hours -> priority: high
 - SLA <= 24 hours -> priority: medium
 - SLA > 24 hours -> priority: low
@@ -32,7 +34,8 @@ Process tickets from highest urgency to lowest (critical -> high -> medium -> lo
 REPLY GUIDELINES:
 Each reply MUST be at least 100 characters and include concrete next steps and timelines.
 - Access issues: mention "verify", "MFA", "reset", and a time estimate (e.g. "15 minutes")
-- Billing issues: mention "apologize"/"apology", "refund", "invoice", and a time (e.g. "48 hours")
+- Billing disputes: mention "apologize"/"apology", "refund", "invoice", and a time (e.g. "48 hours")
+- Billing invoice requests: mention "invoice", "pdf", "attached"
 - Outage issues: mention "incident", "mitigation", "status page", update interval (e.g. "30 minutes")
 - Security issues: mention "revoke", "tokens", "security", "investigation"
 - Feature requests: mention "roadmap", "feature request", "tracking"
@@ -76,7 +79,8 @@ CLASSIFICATION RULES:
 - Feature request -> category: feature_request, team: product
 
 PRIORITY BY SLA:
-- SLA <= 2h -> critical   |  SLA <= 8h -> high   |  SLA <= 24h -> medium   |  SLA > 24h -> low
+- SLA <= 1h -> critical   |  SLA <= 2h enterprise billing -> critical   |  SLA <= 2h -> high
+- SLA <= 8h -> high   |  SLA <= 24h -> medium   |  SLA > 24h -> low
 
 WORKFLOW:
 1. Set priority/category/team BEFORE replying.

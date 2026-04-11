@@ -57,8 +57,12 @@ def _classify_category(subject: str) -> Tuple[str, str]:
 
 
 def _infer_priority(sla_hours: int, customer_tier: str, category: str) -> str:
-    if sla_hours <= 2:
+    if sla_hours <= 1:
         return "critical"
+    if sla_hours <= 2:
+        if customer_tier == "enterprise" and category == "billing":
+            return "critical"
+        return "high"
     if sla_hours <= 8:
         return "high"
     if sla_hours <= 24:
@@ -86,7 +90,9 @@ def _infer_status(category: str, priority: str, customer_tier: str, subject: str
     return "resolved"
 
 
-def _reply_for_category(category: str) -> str:
+def _reply_for_ticket(category: str, subject: str) -> str:
+    normalized = _normalize(subject)
+
     if category == "access":
         return (
             "Thanks for reporting this access issue. Please verify your identity in the secure portal, "
@@ -94,6 +100,11 @@ def _reply_for_category(category: str) -> str:
             "normal access within 15 minutes after verification."
         )
     if category == "billing":
+        if any(token in normalized for token in ("invoice", "pdf", "audit", "copy")):
+            return (
+                "Your invoice PDF is attached to this ticket. If your finance team needs a signed "
+                "copy or additional invoice documents, reply here and we can provide them today."
+            )
         return (
             "We apologize for the billing issue and are reviewing invoice history now. We will process "
             "any required refund and confirm correction in this thread. You can expect a billing update "
@@ -236,7 +247,7 @@ def build_baseline_plan(observation: Any) -> Dict[str, Any]:
         category, team = _classify_category(ticket.subject)
         priority = _infer_priority(ticket.sla_hours, ticket.customer_tier, category)
         status = _infer_status(category, priority, ticket.customer_tier, ticket.subject)
-        reply_text = _reply_for_category(category)
+        reply_text = _reply_for_ticket(category, ticket.subject)
 
         tickets_plan[ticket.ticket_id] = {
             "priority": priority,
