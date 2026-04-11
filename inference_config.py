@@ -77,7 +77,7 @@ class InferenceSettings:
             "API_BASE_URL",
             "https://router.huggingface.co/v1",
         )
-        resolved_hf_token = hf_token if hf_token is not None else os.getenv("HF_TOKEN")
+        resolved_hf_token = hf_token if hf_token is not None else (os.getenv("API_KEY") or os.getenv("HF_TOKEN"))
 
         return cls(
             api_base_url=resolved_api_base_url,

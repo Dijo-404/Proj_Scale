@@ -75,10 +75,10 @@ def _read_required_env() -> tuple[str, str, str]:
 
     api_base_url = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
     model_name = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-    hf_token = os.getenv("HF_TOKEN")
+    hf_token = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 
     if not hf_token:
-        raise ValueError("HF_TOKEN environment variable is required")
+        raise ValueError("API_KEY or HF_TOKEN environment variable is required")
 
     return api_base_url, model_name, hf_token
 
