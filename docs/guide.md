@@ -188,7 +188,9 @@ Per ticket communication score:
 
 - Keyword coverage fraction over required phrases.
 - Length score capped by minimum target length.
-- Combined as `0.8 * coverage + 0.2 * length_score`.
+- Structure and anti-stuffing signals to reduce keyword-bag gaming.
+
+Scores are clamped to OpenEnv's strict open interval `(0, 1)`, so perfect behavior is represented as `0.9999` rather than `1.0`.
 
 ### 7.3 Reward function
 
@@ -333,6 +335,8 @@ pip install -e .
 uvicorn server.app:app --host 0.0.0.0 --port 8000
 ```
 
+At startup, the app validates scenario configuration and fails fast with a clear error if the config path is missing or invalid.
+
 ### 10.3 Run baseline in local-server mode
 
 ```bash
@@ -353,6 +357,8 @@ ruff check .
 ---
 
 ## 11. Containerization and Deployment Workflow
+
+The base image in `Dockerfile` is pinned by immutable digest for reproducible builds.
 
 ### 11.1 Build and run locally
 

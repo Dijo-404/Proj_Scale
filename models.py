@@ -76,6 +76,9 @@ class SupportOpsObservation(Observation):
 class SupportOpsState(State):
     """Internal state object surfaced via state()."""
 
+    # Declared explicitly for clarity even though these come from the OpenEnv base State.
+    episode_id: Optional[str] = None
+    step_count: int = 0
     active_task: str = ""
     selected_ticket: Optional[str] = None
     score: float = Field(default=1e-4, gt=0.0, lt=1.0)

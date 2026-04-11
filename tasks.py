@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 from dataclasses import dataclass
@@ -16,6 +17,10 @@ CustomerTier = Literal["standard", "business", "enterprise"]
 
 VALID_DIFFICULTIES = {"easy", "medium", "hard"}
 VALID_CUSTOMER_TIERS = {"standard", "business", "enterprise"}
+
+
+class ScenarioConfigError(RuntimeError):
+    """Raised when the benchmark scenario config cannot be loaded safely."""
 
 
 @dataclass(frozen=True)
@@ -78,7 +83,13 @@ def _load_raw_config(config_path: Path) -> Dict:
         raise FileNotFoundError(f"scenario config not found: {config_path}")
 
     with config_path.open("r", encoding="utf-8") as handle:
-        payload = json.load(handle)
+        try:
+            payload = json.load(handle)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                "scenario config is not valid JSON "
+                f"(line {exc.lineno}, column {exc.colno})"
+            ) from exc
 
     if not isinstance(payload, dict):
         raise ValueError("scenario config must be a JSON object")
@@ -163,15 +174,75 @@ def _build_task_library(config_payload: Dict) -> Tuple[Dict[str, TaskSpec], Tupl
     return library, task_order
 
 
-_CONFIG = _load_raw_config(_config_path())
-TASK_LIBRARY, TASK_ORDER = _build_task_library(_CONFIG)
+@functools.lru_cache(maxsize=1)
+def _load_task_catalog() -> Tuple[Dict[str, TaskSpec], Tuple[str, ...], Path]:
+    config_path = _config_path()
+    try:
+        config_payload = _load_raw_config(config_path)
+        task_library, task_order = _build_task_library(config_payload)
+    except (FileNotFoundError, ValueError, TypeError, KeyError) as exc:
+        raise ScenarioConfigError(
+            f"failed to load scenario config from '{config_path}': {exc}"
+        ) from exc
+
+    if not task_library:
+        raise ScenarioConfigError(
+            f"scenario config '{config_path}' must define at least one task"
+        )
+
+    if not task_order:
+        raise ScenarioConfigError(
+            f"scenario config '{config_path}' produced an empty task order"
+        )
+
+    return task_library, task_order, config_path
+
+
+def clear_task_cache() -> None:
+    """Clear cached task catalog data (used by tests and dynamic config changes)."""
+
+    _load_task_catalog.cache_clear()
+
+
+def get_task_library() -> Dict[str, TaskSpec]:
+    return _load_task_catalog()[0]
+
+
+def get_task_order() -> Tuple[str, ...]:
+    return _load_task_catalog()[1]
+
+
+def validate_scenario_config() -> Dict[str, object]:
+    """Validate config eagerly and return a small diagnostics payload."""
+
+    task_library, task_order, config_path = _load_task_catalog()
+    return {
+        "config_path": str(config_path),
+        "task_count": len(task_library),
+        "task_order_count": len(task_order),
+    }
+
+
+def has_task(task_name: str) -> bool:
+    return task_name in get_task_library()
+
+
+def __getattr__(name: str):
+    """Backward-compatible lazy access for legacy module globals."""
+
+    if name == "TASK_LIBRARY":
+        return get_task_library()
+    if name == "TASK_ORDER":
+        return get_task_order()
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 
 def get_task(task_name: str) -> TaskSpec:
-    if task_name not in TASK_LIBRARY:
+    task_library = get_task_library()
+    if task_name not in task_library:
         raise KeyError(f"Unknown task: {task_name}")
-    return TASK_LIBRARY[task_name]
+    return task_library[task_name]
 
 
 def available_tasks() -> Tuple[str, ...]:
-    return TASK_ORDER
+    return get_task_order()

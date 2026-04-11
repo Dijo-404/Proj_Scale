@@ -219,7 +219,7 @@ if [ "$RUN_OK" != true ]; then
   stop_at "Step 5"
 fi
 
-if ! "$PYTHON_BIN" - "$OUT_STDOUT" <<'PY'
+if "$PYTHON_BIN" - "$OUT_STDOUT" <<'PY'
 import re
 import sys
 
@@ -283,9 +283,7 @@ fi
 
 log "${BOLD}Step 6/7: Task count and grader behavior${NC} ..."
 
-if ! "$PYTHON_BIN" - "$REPO_DIR" <<'PY'
-import importlib.util
-import os
+if "$PYTHON_BIN" - "$REPO_DIR" <<'PY'
 import pathlib
 import sys
 
@@ -293,7 +291,6 @@ repo = pathlib.Path(sys.argv[1])
 sys.path.insert(0, str(repo))
 
 from graders import TASK_GRADERS
-from models import SupportOpsObservation, SupportTicket
 from tasks import available_tasks, get_task
 
 names = tuple(available_tasks())
@@ -308,75 +305,43 @@ if missing:
 # Score sanity: totals are strict (0,1) and non-constant on realistic state change
 for name in names:
     task = get_task(name)
-    graders = TASK_GRADERS[name]
+    grader = TASK_GRADERS[name]
 
-    zero_obs = SupportOpsObservation(
-        task_name=task.name,
-        task_description=task.description,
-        difficulty=task.difficulty,
-        remaining_steps=task.max_steps,
-        tickets=[
-            SupportTicket(
-                ticket_id=t.ticket_id,
-                subject=t.subject,
-                customer_tier=t.customer_tier,
-                sla_hours=t.sla_hours,
-                priority="low",
-                category="access",
-                assigned_team="tier1",
-                status="new",
-                latest_reply=None,
-                history=[],
-            )
-            for t in task.tickets
-        ],
-        action_hints=list(task.action_hints),
-        score=0.0,
-        done=False,
-        last_action_error=None,
-    )
+    zero_tickets = {
+        t.ticket_id: {
+            "priority": "low",
+            "category": "access",
+            "team": "tier1",
+            "status": "new",
+            "last_reply": None,
+        }
+        for t in task.tickets
+    }
 
-    # "Perfect" proxy state derived from goals
-    ticket_map = {t.ticket_id: t for t in task.tickets}
-    perfect_tickets = []
-    for ticket_id, goal in task.goals.items():
-      seed = ticket_map[ticket_id]
-      perfect_tickets.append(
-          SupportTicket(
-              ticket_id=seed.ticket_id,
-              subject=seed.subject,
-              customer_tier=seed.customer_tier,
-              sla_hours=seed.sla_hours,
-              priority=goal.priority,
-              category=goal.category,
-              assigned_team=goal.team,
-              status=goal.status,
-              latest_reply=" ".join(goal.reply_rule.required_keywords) + " extra context to satisfy length",
-              history=[],
-          )
-      )
+    perfect_tickets = {
+        ticket_id: {
+            "priority": goal.priority,
+            "category": goal.category,
+            "team": goal.team,
+            "status": goal.status,
+            "last_reply": " ".join(goal.reply_rule.required_keywords)
+            + " extra context to satisfy length",
+        }
+        for ticket_id, goal in task.goals.items()
+    }
 
-    perfect_obs = SupportOpsObservation(
-        task_name=task.name,
-        task_description=task.description,
-        difficulty=task.difficulty,
-        remaining_steps=task.max_steps,
-        tickets=perfect_tickets,
-        action_hints=list(task.action_hints),
-        score=0.0,
-        done=False,
-        last_action_error=None,
-    )
+    z_breakdown = grader(zero_tickets, [])
+    p_breakdown = grader(perfect_tickets, [])
 
-    z = sum(float(g(zero_obs)) for g in graders)
-    p = sum(float(g(perfect_obs)) for g in graders)
+    z = float(z_breakdown.get("total", 0.0))
+    p = float(p_breakdown.get("total", 0.0))
 
     if not (0.0 < z < 1.0):
-      raise SystemExit(f"Task {name} zero-state total must be in (0,1), got {z}")
+        raise SystemExit(f"Task {name} zero-state total must be in (0,1), got {z}")
     if not (0.0 < p < 1.0):
-      raise SystemExit(f"Task {name} perfect-state total must be in (0,1), got {p}")
+        raise SystemExit(f"Task {name} perfect-state total must be in (0,1), got {p}")
     if abs(z - p) < 1e-9:
-      raise SystemExit(f"Task {name} grader total appears constant ({z})")
+        raise SystemExit(f"Task {name} grader total appears constant ({z})")
 
 print("grader checks OK")
 PY
@@ -394,7 +359,25 @@ if ! grep -R --line-number --quiet "openenv" "$REPO_DIR/README.md"; then
   stop_at "Step 7"
 fi
 
-if grep -R --line-number --binary-files=without-match -E "(sk-[A-Za-z0-9]{20,}|hf_[A-Za-z0-9]{20,})" "$REPO_DIR" >/dev/null 2>&1; then
+TOKEN_REGEX="(sk-[A-Za-z0-9]{20,}|hf_[A-Za-z0-9]{20,})"
+TOKEN_HIT=false
+
+if git -C "$REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  if git -C "$REPO_DIR" grep --line-number -E "$TOKEN_REGEX" -- . ":(exclude)scripts/preval_script.sh" >/dev/null 2>&1; then
+    TOKEN_HIT=true
+  fi
+else
+  if grep -R --line-number --binary-files=without-match -E "$TOKEN_REGEX" \
+    --exclude="preval_script.sh" \
+    --exclude-dir=".git" \
+    --exclude-dir=".venv" \
+    --exclude-dir="__pycache__" \
+    "$REPO_DIR" >/dev/null 2>&1; then
+    TOKEN_HIT=true
+  fi
+fi
+
+if [ "$TOKEN_HIT" = true ]; then
   fail "Potential hardcoded API tokens found in repository"
   hint "Move secrets to environment variables and remove committed tokens."
   stop_at "Step 7"
@@ -403,6 +386,6 @@ fi
 pass "README includes openenv reference and no obvious hardcoded token patterns"
 
 printf "\n"
-printf "${GREEN}${BOLD}✅ Validation complete: %d/7 checks passed.${NC}\n" "$PASS"
+printf "${GREEN}${BOLD}Validation complete: %d/7 checks passed.${NC}\n" "$PASS"
 printf "${GREEN}Proj_Scale appears submission-ready for the OpenEnv track.${NC}\n"
 printf "\n"

@@ -5,14 +5,21 @@
 
 from __future__ import annotations
 
-from fastapi import HTTPException
+from contextlib import asynccontextmanager
+import logging
+from typing import AsyncIterator
+
+from fastapi import FastAPI, HTTPException
 
 from openenv.core.env_server.http_server import create_app
 
 from graders import TASK_GRADERS
 from models import SupportOpsAction, SupportOpsObservation
-from tasks import TASK_LIBRARY
+from tasks import ScenarioConfigError, get_task_library, validate_scenario_config
 from server.support_ops_environment import SupportOpsEnvironment
+
+
+logger = logging.getLogger(__name__)
 
 
 app = create_app(
@@ -22,6 +29,29 @@ app = create_app(
     env_name="Proj_Scale",
     max_concurrent_envs=4,
 )
+
+
+def validate_config_on_startup() -> None:
+    """Fail fast with clear diagnostics when scenario config is invalid."""
+    try:
+        details = validate_scenario_config()
+    except ScenarioConfigError as exc:
+        raise RuntimeError(f"Proj_Scale startup validation failed: {exc}") from exc
+
+    logger.info(
+        "Loaded scenario config at %s with %s tasks",
+        details["config_path"],
+        details["task_count"],
+    )
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    validate_config_on_startup()
+    yield
+
+
+app.router.lifespan_context = _lifespan
 
 
 @app.get("/", tags=["Environment Info"])
@@ -37,6 +67,7 @@ def root() -> dict:
 @app.get("/tasks", tags=["Environment Info"])
 def list_tasks() -> dict:
     """List available benchmark tasks and their difficulty."""
+    task_library = get_task_library()
     return {
         "tasks": [
             {
@@ -46,7 +77,7 @@ def list_tasks() -> dict:
                 "max_steps": task.max_steps,
                 "has_grader": task.name in TASK_GRADERS,
             }
-            for task in TASK_LIBRARY.values()
+            for task in task_library.values()
         ]
     }
 
@@ -59,7 +90,7 @@ def get_task(task_name: str) -> dict:
     an answer sheet through the API.
     """
 
-    task = TASK_LIBRARY.get(task_name)
+    task = get_task_library().get(task_name)
     if task is None:
         raise HTTPException(status_code=404, detail=f"Unknown task: {task_name}")
 

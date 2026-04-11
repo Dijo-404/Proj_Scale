@@ -43,16 +43,42 @@ def _normalize(text: str) -> str:
 def _classify_category(subject: str) -> Tuple[str, str]:
     normalized = _normalize(subject)
 
-    if any(token in normalized for token in ("login", "mfa", "password", "access", "locked out")):
-        return "access", "tier1"
     if any(token in normalized for token in ("billing", "invoice", "refund", "charge", "payment")):
         return "billing", "billing"
-    if any(token in normalized for token in ("500", "outage", "downtime", "api", "checkout")):
-        return "outage", "sre"
     if any(token in normalized for token in ("oauth", "token", "security", "suspicious", "compromised")):
         return "security", "security"
+
+    has_explicit_outage = any(token in normalized for token in ("outage", "downtime", "incident"))
+    has_500_context = "500" in normalized and any(
+        token in normalized
+        for token in ("error", "errors", "failing", "failure", "failed", "down")
+    )
+    has_api_context = "api" in normalized and any(
+        token in normalized
+        for token in (
+            "500",
+            "error",
+            "errors",
+            "failing",
+            "failure",
+            "failed",
+            "down",
+            "checkout",
+        )
+    )
+    has_checkout_context = "checkout" in normalized and any(
+        token in normalized
+        for token in ("500", "error", "errors", "failing", "failure", "failed", "down")
+    )
+
+    if has_explicit_outage or has_500_context or has_api_context or has_checkout_context:
+        return "outage", "sre"
+
     if any(token in normalized for token in ("feature", "request", "enhancement", "roadmap")):
         return "feature_request", "product"
+
+    if any(token in normalized for token in ("login", "mfa", "password", "access", "locked out")):
+        return "access", "tier1"
 
     return "access", "tier1"
 
@@ -518,13 +544,20 @@ def choose_action(
     if client is None:
         return planned_action
 
-    has_incomplete_ticket = any(
-        ticket.priority is None
-        or ticket.category is None
-        or ticket.team is None
-        or not ticket.last_reply
-        for ticket in observation.tickets
-    )
+    def _ticket_needs_recovery(ticket: Any) -> bool:
+        target = targets.get(ticket.ticket_id)
+        if target is None:
+            return True
+
+        return (
+            ticket.priority != target.get("priority")
+            or ticket.category != target.get("category")
+            or ticket.team != target.get("team")
+            or ticket.status != target.get("status")
+            or not ticket.last_reply
+        )
+
+    has_incomplete_ticket = any(_ticket_needs_recovery(ticket) for ticket in observation.tickets)
 
     if not has_incomplete_ticket:
         return planned_action

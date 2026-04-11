@@ -173,7 +173,9 @@ Task score formula:
 total = 0.5 * routing + 0.3 * communication + 0.2 * process
 ```
 
-Communication score combines keyword coverage and minimum length.
+Communication score combines keyword coverage, minimum length, structure quality, and anti-stuffing signals.
+
+For OpenEnv compliance, score fields are clamped to the strict open interval `(0, 1)`. A mathematically perfect run appears as `0.9999`, not `1.0`.
 
 ## 9) Reward Shaping
 
@@ -235,6 +237,8 @@ Start API server:
 ```bash
 uvicorn server.app:app --host 0.0.0.0 --port 8000
 ```
+
+On startup, the server validates scenario configuration and fails fast with a clear error if the config file is missing, malformed, or semantically invalid.
 
 Useful endpoints:
 
@@ -352,6 +356,9 @@ env = await SupportOpsEnv.from_docker_image("proj_scale-env:latest")
 ```
 
 ## 13) Docker and Hugging Face Space Deployment
+
+The Docker base image is pinned by immutable digest in `Dockerfile` for reproducible builds.
+When intentionally upgrading the base image, resolve a new digest and commit the change explicitly.
 
 Build image:
 

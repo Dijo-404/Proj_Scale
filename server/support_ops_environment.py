@@ -20,7 +20,13 @@ from models import (
     SupportOpsState,
     TicketView,
 )
-from tasks import TASK_ORDER, TASK_LIBRARY, TaskSpec, get_task
+from tasks import (
+    ScenarioConfigError,
+    TaskSpec,
+    available_tasks,
+    get_task,
+    has_task,
+)
 
 
 class SupportOpsEnvironment(Environment):
@@ -32,15 +38,19 @@ class SupportOpsEnvironment(Environment):
     INVALID_ACTION_PENALTY = 0.05
 
     def __init__(self) -> None:
+        task_order = available_tasks()
+        if not task_order:
+            raise ScenarioConfigError("no tasks available from scenario config")
+
         self._task_idx = -1
-        self._task: TaskSpec = get_task(TASK_ORDER[0])
+        self._task: TaskSpec = get_task(task_order[0])
         self._tickets: Dict[str, Dict] = {}
         self._history: list[Dict] = []
         self._selected_ticket: Optional[str] = None
         self._last_score = 0.0
         self._done = False
         self._state = SupportOpsState(episode_id=str(uuid4()), step_count=0)
-        self._set_task(TASK_ORDER[0], rotate=False)
+        self._set_task(task_order[0], rotate=False)
 
     def _new_ticket_state(self, ticket_seed) -> Dict:
         return {
@@ -73,7 +83,8 @@ class SupportOpsEnvironment(Environment):
             done=False,
         )
         if rotate:
-            self._task_idx = (self._task_idx + 1) % len(TASK_ORDER)
+            task_order = available_tasks()
+            self._task_idx = (self._task_idx + 1) % len(task_order)
 
     def reset(
         self,
@@ -82,14 +93,18 @@ class SupportOpsEnvironment(Environment):
         task_name: Optional[str] = None,
         **kwargs,
     ) -> SupportOpsObservation:
+        task_order = available_tasks()
+        if not task_order:
+            raise ScenarioConfigError("no tasks available from scenario config")
+
         requested_task = task_name or kwargs.get("task") or kwargs.get("task_name")
 
         if requested_task is None:
-            next_idx = (self._task_idx + 1) % len(TASK_ORDER)
-            requested_task = TASK_ORDER[next_idx]
+            next_idx = (self._task_idx + 1) % len(task_order)
+            requested_task = task_order[next_idx]
 
-        if requested_task not in TASK_LIBRARY:
-            requested_task = TASK_ORDER[0]
+        if not has_task(requested_task):
+            requested_task = task_order[0]
 
         self._set_task(requested_task, rotate=True)
 
